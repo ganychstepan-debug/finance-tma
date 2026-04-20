@@ -44,6 +44,12 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
   const [newBankName, setNewBankName] = useState('')
   const [newBankColor, setNewBankColor] = useState(CUSTOM_BANK_COLORS[0])
 
+  // v0.34: модалка "Свой тип счёта"
+  const [showCustomType, setShowCustomType] = useState(false)
+  const [customTypeName, setCustomTypeName] = useState('')
+  const [customTypeEmoji, setCustomTypeEmoji] = useState('📊')
+  const CUSTOM_TYPE_EMOJIS = ['📊','📈','💹','💰','💎','🏦','🪙','💳','💵','🎯','🏛','💼','📦','🔐','🎁','⭐']
+
   const handleCreateBank = () => {
     // v0.34: буквы автогенерируются из названия (первые 1-2 символа)
     const autoLetters = newBankName.trim().slice(0, 2).toUpperCase()
@@ -137,7 +143,7 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
               </button>
             ))}
             <button
-              onClick={() => { haptic.light(); alert('Свой тип счёта — скоро. Брокер, крипто, вклад на ребёнка.') }}
+              onClick={() => { haptic.light(); setShowCustomType(true) }}
               className="aspect-square rounded-btn bg-transparent flex flex-col items-center justify-center gap-1 cursor-pointer text-accent"
               style={{ border: '1px dashed rgba(var(--c-border), 1)' }}
             >
@@ -332,6 +338,89 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
             >
               Отмена
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* v0.34: Модалка "Свой тип счёта" */}
+      {showCustomType && (
+        <div
+          onClick={() => setShowCustomType(false)}
+          className="fixed inset-0 bg-black/70 flex items-end z-[60]"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full bg-bg-secondary rounded-t-3xl px-5 pt-3 pb-8"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+          >
+            <div className="w-10 h-1 bg-bg-tertiary rounded-full mx-auto mb-4" />
+            <div className="text-center mb-5">
+              <div className="text-base font-semibold">Свой тип счёта</div>
+              <div className="text-xs text-text-muted mt-1">Брокер, криптокошелёк, вклад на ребёнка — что угодно</div>
+            </div>
+
+            <div className="flex justify-center mb-5">
+              <div className="w-[72px] h-[72px] rounded-[20px] flex items-center justify-center text-4xl"
+                style={{ background: 'rgba(255,23,68,0.12)', border: '1.5px solid rgba(255,23,68,0.4)' }}
+              >
+                {customTypeEmoji}
+              </div>
+            </div>
+
+            <label className="text-2xs text-text-muted uppercase tracking-wide block mb-1.5">Название</label>
+            <input
+              type="text"
+              placeholder="Например, Брокерский счёт"
+              value={customTypeName}
+              onChange={(e) => setCustomTypeName(e.target.value)}
+              maxLength={30}
+              className="w-full px-3.5 py-3 bg-bg-tertiary border-0 rounded-btn text-white text-sm box-border mb-4"
+            />
+
+            <label className="text-2xs text-text-muted uppercase tracking-wide block mb-2">Иконка</label>
+            <div className="grid grid-cols-8 gap-2 mb-5">
+              {CUSTOM_TYPE_EMOJIS.map((em) => (
+                <button
+                  key={em}
+                  onClick={() => { haptic.select(); setCustomTypeEmoji(em) }}
+                  className="aspect-square rounded-btn flex items-center justify-center text-xl cursor-pointer border-0"
+                  style={{
+                    background: customTypeEmoji === em ? 'rgba(255,23,68,0.12)' : 'rgb(var(--c-bg-tertiary))',
+                    outline: customTypeEmoji === em ? '1px solid rgb(var(--c-accent))' : 'none',
+                  }}
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
+            <div className="text-[11px] text-text-muted text-center mb-5">
+              Подсказка: введите название — иконка подберётся сама
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCustomType(false)}
+                className="flex-1 py-3 bg-bg-tertiary border-0 rounded-btn text-text-secondary text-sm cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => {
+                  if (!customTypeName.trim()) return
+                  haptic.success()
+                  setName(customTypeName)
+                  setShowCustomType(false)
+                  setCustomTypeName('')
+                }}
+                disabled={!customTypeName.trim()}
+                className={`flex-[1.4] py-3 rounded-btn text-sm font-medium cursor-pointer border-0 ${
+                  customTypeName.trim() ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-faint'
+                }`}
+                style={customTypeName.trim() ? { boxShadow: '0 0 14px rgba(255,23,68,0.4)' } : undefined}
+              >
+                Создать
+              </button>
+            </div>
           </div>
         </div>
       )}
