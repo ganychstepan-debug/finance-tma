@@ -132,6 +132,7 @@ const GoalCard: React.FC<{
       className={`w-full text-left p-4 bg-bg-secondary rounded-card border cursor-pointer active:scale-[0.99] transition-transform ${
         done ? 'border-success/50' : 'border-border'
       }`}
+      style={{ minHeight: 116 }}
     >
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${done ? 'bg-success/20' : 'bg-accent/15'}`}>

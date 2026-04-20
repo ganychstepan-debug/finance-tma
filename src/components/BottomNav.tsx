@@ -92,17 +92,19 @@ export const BottomNav: React.FC<Props> = ({ active, onChange, onAddTap }) => {
       <TabButton tab={home}       active={active === 'home'}       onClick={() => go('home')} />
       <TabButton tab={categories} active={active === 'categories'} onClick={() => go('categories')} />
 
-      {/* Центральная кнопка "+" — 64px, пульсирующая с подскоком */}
+      {/* Центральная кнопка "+" — FAB с двухслойной анимацией */}
       <div className="flex-1 flex justify-center">
-        <button
-          onClick={() => { haptic.medium(); onAddTap() }}
-          className="fab-pulse relative -mt-8 w-16 h-16 rounded-full bg-accent border-0 cursor-pointer flex items-center justify-center text-white"
-          aria-label="Добавить"
-        >
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
+        <div className="fab-outer relative">
+          <button
+            onClick={() => { haptic.medium(); onAddTap() }}
+            className="fab-inner w-16 h-16 rounded-full bg-accent border-0 cursor-pointer flex items-center justify-center text-white"
+            aria-label="Добавить"
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <TabButton tab={stats} active={active === 'stats'} onClick={() => go('stats')} />

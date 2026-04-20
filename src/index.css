@@ -68,29 +68,23 @@ input[type=number]::-webkit-outer-spin-button {
 .neon-glow { box-shadow: 0 0 12px rgba(var(--c-accent-glow-strong), 0.6); }
 .neon-text { text-shadow: 0 0 8px rgba(var(--c-accent-glow-strong), 0.8); }
 
-/* Пульсирующее неон-свечение для центральной + кнопки */
-@keyframes pulse-glow-bounce {
-  0%, 100% {
-    box-shadow:
-      0 6px 20px rgba(var(--c-accent-glow-strong), 0.45),
-      0 0 0 4px rgb(var(--c-bg-nav)),
-      0 0 12px rgba(var(--c-accent-glow-strong), 0.4);
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    box-shadow:
-      0 8px 28px rgba(var(--c-accent-glow-strong), 0.7),
-      0 0 0 4px rgb(var(--c-bg-nav)),
-      0 0 28px rgba(var(--c-accent-glow-strong), 0.65),
-      0 0 44px rgba(var(--c-accent-glow-strong), 0.3);
-    transform: translateY(-2px) scale(1.04);
-  }
+/* v0.34: FAB — плавное покачивание + мягкое свечение */
+@keyframes fabFloat {
+  0%, 100% { transform: translateY(-4px); }
+  50%      { transform: translateY(-10px); }
+}
+@keyframes fabGlow {
+  0%, 100% { box-shadow: 0 6px 20px rgba(var(--c-accent-glow-strong), 0.55); }
+  50%      { box-shadow: 0 8px 28px rgba(var(--c-accent-glow-strong), 0.85), 0 0 30px rgba(var(--c-accent-glow-strong), 0.35); }
 }
 
-.fab-pulse {
-  animation: pulse-glow-bounce 2.4s ease-in-out infinite;
+.fab-outer {
+  animation: fabFloat 3.2s ease-in-out infinite;
 }
-.fab-pulse:active {
+.fab-inner {
+  animation: fabGlow 2.4s ease-in-out infinite;
+}
+.fab-inner:active {
   animation: none;
 }
 

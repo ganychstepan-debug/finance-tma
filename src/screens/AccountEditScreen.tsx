@@ -42,11 +42,12 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
 
   const [showBankCreator, setShowBankCreator] = useState(false)
   const [newBankName, setNewBankName] = useState('')
-  const [newBankShort, setNewBankShort] = useState('')
   const [newBankColor, setNewBankColor] = useState(CUSTOM_BANK_COLORS[0])
 
   const handleCreateBank = () => {
-    const id = addCustomBank(newBankName, newBankShort || newBankName.charAt(0), newBankColor)
+    // v0.34: буквы автогенерируются из названия (первые 1-2 символа)
+    const autoLetters = newBankName.trim().slice(0, 2).toUpperCase()
+    const id = addCustomBank(newBankName, autoLetters || newBankName.charAt(0), newBankColor)
     if (!id) {
       alert('Можно добавить максимум 5 своих банков.')
       return
@@ -55,7 +56,6 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
     setBankId(id)
     setShowBankCreator(false)
     setNewBankName('')
-    setNewBankShort('')
   }
 
   const handleDeleteCustomBank = (id: string, e: React.MouseEvent) => {
@@ -279,7 +279,7 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
                 className="w-16 h-16 rounded-[14px] flex items-center justify-center text-white text-2xl font-semibold"
                 style={{ background: newBankColor }}
               >
-                {(newBankShort || newBankName.charAt(0) || '?').toUpperCase().slice(0, 2)}
+                {(newBankName.trim().slice(0, 2) || '?').toUpperCase()}
               </div>
             </div>
 
@@ -294,18 +294,7 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
                   maxLength={30}
                   className="w-full px-3.5 py-3 bg-bg-tertiary border-0 rounded-btn text-white text-sm box-border"
                 />
-              </div>
-
-              <div>
-                <label className="text-2xs text-text-muted uppercase tracking-wide block mb-1.5">Буквы (1–2)</label>
-                <input
-                  type="text"
-                  placeholder="Ю"
-                  value={newBankShort}
-                  onChange={(e) => setNewBankShort(e.target.value.toUpperCase().slice(0, 2))}
-                  maxLength={2}
-                  className="w-full px-3.5 py-3 bg-bg-tertiary border-0 rounded-btn text-white text-sm box-border"
-                />
+                <div className="text-[11px] text-text-muted mt-1.5">Буквы подберутся автоматически</div>
               </div>
 
               <div>
