@@ -5,13 +5,17 @@ import { convert } from '@/lib/fx'
 import { formatMonth } from '@/lib/formatters'
 
 type Period = 'week' | 'month' | 'year'
+type ViewMode = 'expense' | 'income' | 'balance'
 
 // v0.29: Палитра «киберпанк» для долей диаграммы
 const RED_SHADES = ['#ff1744', '#ff4d8f', '#a855f7', '#3b82f6', '#06b6d4']
 
 export const StatsScreen: React.FC = () => {
   const state = useStore()
-  const [period, setPeriod] = useState<Period>('month')
+  const [period] = useState<Period>('month')
+  // viewMode пока влияет только на UI, расчёт остаётся по расходам; будет расширено
+  const [viewMode, setViewMode] = useState<ViewMode>('expense')
+  void viewMode
   const [selectedMonth, setSelectedMonth] = useState(new Date())
   const baseCurrency = state.settings.baseCurrency
 
@@ -111,41 +115,54 @@ export const StatsScreen: React.FC = () => {
   return (
     <div className="flex flex-col h-full overflow-y-auto pb-4">
       <div className="px-5 pt-3 pb-3 flex justify-between items-center">
-        <div className="text-xl font-medium">Статистика</div>
-        {period === 'month' && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={prevMonth}
-              className="w-8 h-8 rounded-full bg-bg-secondary border-0 cursor-pointer text-text-secondary flex items-center justify-center"
-              aria-label="Прошлый месяц"
-            >
-              ‹
-            </button>
-            <div className="text-xs text-text-secondary uppercase tracking-wide min-w-[90px] text-center font-medium">
-              {formatMonth(selectedMonth)}
-            </div>
-            <button
-              onClick={nextMonth}
-              disabled={y === new Date().getFullYear() && m === new Date().getMonth()}
-              className="w-8 h-8 rounded-full bg-bg-secondary border-0 cursor-pointer text-text-secondary flex items-center justify-center disabled:opacity-30"
-              aria-label="Следующий месяц"
-            >
-              ›
-            </button>
-          </div>
-        )}
+        <div style={{ width: 30 }}></div>
+        <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>Статистика</div>
+        <button
+          className="cursor-pointer flex items-center justify-center"
+          style={{
+            padding: 7, background: '#141414', border: '0.5px solid #222',
+            borderRadius: 10, color: '#ff1744', width: 30, height: 30,
+          }}
+          aria-label="Экспорт"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
       </div>
 
+      {/* v0.34: селектор месяца под шапкой */}
+      <div className="flex items-center justify-center gap-3.5 mb-3.5">
+        <button onClick={prevMonth} className="bg-transparent border-0 cursor-pointer" style={{ color: '#555' }}>‹</button>
+        <div className="text-center">
+          <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>{formatMonth(selectedMonth)}</div>
+          <div style={{ color: '#666', fontSize: 10 }}>
+            1 — {new Date(y, m + 1, 0).getDate()} {['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'][m]}
+          </div>
+        </div>
+        <button
+          onClick={nextMonth}
+          disabled={y === new Date().getFullYear() && m === new Date().getMonth()}
+          className="bg-transparent border-0 cursor-pointer disabled:opacity-30"
+          style={{ color: '#555' }}
+        >›</button>
+      </div>
+
+      {/* v0.34: переключатель вида Расходы/Доходы/Баланс */}
       <div className="px-5 mb-4 flex gap-1.5">
-        {(['week', 'month', 'year'] as const).map((p) => (
+        {(['expense', 'income', 'balance'] as const).map((v) => (
           <button
-            key={p}
-            onClick={() => { haptic.select(); setPeriod(p) }}
-            className={`flex-1 py-2 rounded-btn text-xs font-medium cursor-pointer border ${
-              period === p ? 'bg-accent border-0 text-white' : 'bg-bg-secondary border-border text-text-muted'
-            }`}
+            key={v}
+            onClick={() => { haptic.select(); setViewMode(v) }}
+            className="flex-1 py-1.5 cursor-pointer text-[11px] font-semibold"
+            style={{
+              background: viewMode === v ? '#ff1744' : 'transparent',
+              border: viewMode === v ? '0' : '0.5px solid #222',
+              borderRadius: 999,
+              color: viewMode === v ? '#fff' : '#888',
+            }}
           >
-            {p === 'week' ? 'Неделя' : p === 'month' ? 'Месяц' : 'Год'}
+            {v === 'expense' ? 'Расходы' : v === 'income' ? 'Доходы' : 'Баланс'}
           </button>
         ))}
       </div>
@@ -161,82 +178,102 @@ export const StatsScreen: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Круговая диаграмма */}
+          {/* Круговая диаграмма — 220px */}
           <div className="px-5 mb-5 flex justify-center">
-            <div className="relative w-[200px] h-[200px]">
-              <svg viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="100" cy="100" r={RADIUS} fill="none" stroke="#1a1a1a" strokeWidth={STROKE} />
-                {arcs.map((a, i) => (
-                  <circle
-                    key={i}
-                    cx="100"
-                    cy="100"
-                    r={RADIUS}
-                    fill="none"
-                    stroke={a.color}
-                    strokeWidth={STROKE}
-                    strokeDasharray={`${a.length} ${CIRCUMFERENCE}`}
-                    strokeDashoffset={a.offset}
-                    strokeLinecap="round"
-                  />
-                ))}
+            <div className="relative" style={{ width: 220, height: 220 }}>
+              <svg viewBox="0 0 220 220" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="110" cy="110" r="88" fill="none" stroke="#1a1a1a" strokeWidth="24" />
+                {arcs.map((a, i) => {
+                  const length = (a.length / CIRCUMFERENCE) * (2 * Math.PI * 88)
+                  const offset = (a.offset / CIRCUMFERENCE) * (2 * Math.PI * 88)
+                  return (
+                    <circle
+                      key={i}
+                      cx="110"
+                      cy="110"
+                      r="88"
+                      fill="none"
+                      stroke={a.color}
+                      strokeWidth="24"
+                      strokeDasharray={`${length} ${2 * Math.PI * 88}`}
+                      strokeDashoffset={offset}
+                      strokeLinecap="round"
+                    />
+                  )
+                })}
               </svg>
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                <div className="text-2xs text-text-muted uppercase tracking-wide">Расходы</div>
-                <div className="text-[22px] font-medium mt-0.5">
-                  {Math.round(totalSpend).toLocaleString('ru-RU')}
+                <div style={{ color: '#555', fontSize: 9, letterSpacing: '1px', fontWeight: 500 }}>ВСЕГО</div>
+                <div style={{ color: '#fff', fontSize: 22, fontWeight: 700, marginTop: 2 }}>
+                  {Math.round(totalSpend).toLocaleString('ru-RU')} ₽
                 </div>
-                <div className="text-xs text-text-muted">
-                  ₽ за {period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'год'}
+                <div style={{ color: '#666', fontSize: 10, marginTop: 1 }}>
+                  {expenseTxs.length} операц{expenseTxs.length === 1 ? 'ия' : expenseTxs.length < 5 ? 'ии' : 'ий'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Список */}
-          <div className="px-5 mb-5">
-            {byCategory.map((c, i) => (
-              <div
-                key={c.id}
-                className="flex justify-between items-center py-2.5 border-b border-border-muted"
-              >
-                <div className="flex items-center gap-2.5">
+          {/* Список категорий с цветными прогресс-барами */}
+          <div className="px-5 mb-5 flex flex-col gap-2">
+            {byCategory.map((c, i) => {
+              const color = RED_SHADES[i] ?? RED_SHADES[RED_SHADES.length - 1]
+              const bg = color === '#ff1744' ? 'rgba(255,23,68,0.12)'
+                : color === '#ff4d8f' ? 'rgba(255,77,143,0.15)'
+                : color === '#a855f7' ? 'rgba(168,85,247,0.15)'
+                : color === '#3b82f6' ? 'rgba(59,130,246,0.15)'
+                : 'rgba(6,182,212,0.15)'
+              // Найти первую эмодзи категории
+              const cat = state.categories.find((cc) => cc.id === c.id)
+              const emoji = cat ? (/\p{Extended_Pictographic}/u.test(cat.icon) ? cat.icon : '📂') : '📊'
+              return (
+                <div key={c.id} className="flex items-center gap-2.5">
                   <div
-                    className="w-2 h-2 rounded-sm"
-                    style={{ backgroundColor: RED_SHADES[i] ?? RED_SHADES[RED_SHADES.length - 1] }}
-                  />
-                  <span className={`text-sm ${c.id === '__other__' ? 'text-text-secondary' : ''}`}>
-                    {c.name}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium">
-                    {Math.round(c.amount).toLocaleString('ru-RU')} ₽
-                  </span>
-                  <span className="text-xs text-text-muted min-w-9 text-right">{c.percent}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Сводка */}
-          <div className="px-5">
-            <div className="p-3.5 bg-bg-secondary border border-border rounded-card flex justify-between items-center">
-              <div>
-                <div className="text-2xs text-text-muted uppercase tracking-wide">Средний расход</div>
-                <div className="text-base font-medium mt-0.5">
-                  {Math.round(avgPerDay).toLocaleString('ru-RU')} ₽ / день
-                </div>
-              </div>
-              {period === 'month' && prevMonthSpend > 0 && (
-                <div className="text-right">
-                  <div className="text-xs text-text-muted">vs прошлый месяц</div>
-                  <div className={`text-sm font-medium ${diffPct <= 0 ? 'text-success' : 'text-accent'}`}>
-                    {diffPct <= 0 ? '▼' : '▲'} {diffPct > 0 ? '+' : ''}{diffPct}%
+                    className="flex items-center justify-center shrink-0"
+                    style={{ width: 28, height: 28, borderRadius: 8, background: bg, fontSize: 14 }}
+                  >
+                    {emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between">
+                      <span style={{ color: '#fff', fontSize: 12, fontWeight: 500 }} className="truncate">
+                        {c.name}
+                      </span>
+                      <span style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>
+                        {Math.round(c.amount).toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex-1" style={{ height: 3, background: '#1a1a1a', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ width: `${c.percent}%`, height: '100%', background: color, borderRadius: 999 }} />
+                      </div>
+                      <span style={{ color, fontSize: 10, fontWeight: 600 }}>{c.percent}%</span>
+                    </div>
                   </div>
                 </div>
-              )}
+              )
+            })}
+          </div>
+
+          {/* v0.34: Две плашки */}
+          <div className="px-5 flex gap-1.5">
+            <div className="flex-1" style={{ padding: 10, background: '#141414', border: '0.5px solid #222', borderRadius: 12 }}>
+              <div style={{ color: '#888', fontSize: 9, letterSpacing: '0.5px' }}>СРЕДНЕЕ В ДЕНЬ</div>
+              <div style={{ color: '#fff', fontSize: 16, fontWeight: 600, marginTop: 2 }}>
+                {Math.round(avgPerDay).toLocaleString('ru-RU')} ₽
+              </div>
             </div>
+            {prevMonthSpend > 0 && (
+              <div className="flex-1" style={{ padding: 10, background: '#141414', border: '0.5px solid #222', borderRadius: 12 }}>
+                <div style={{ color: '#888', fontSize: 9, letterSpacing: '0.5px' }}>VS ПРОШЛЫЙ МЕС</div>
+                <div style={{
+                  color: diffPct <= 0 ? '#00c864' : '#ff1744',
+                  fontSize: 16, fontWeight: 600, marginTop: 2,
+                }}>
+                  {diffPct > 0 ? '+' : ''}{diffPct}%
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

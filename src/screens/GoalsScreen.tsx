@@ -55,20 +55,52 @@ export const GoalsScreen: React.FC<Props> = ({ onClose }) => {
     )
   }
 
+  // v0.34: сумма накоплений по всем целям (включая достигнутые)
+  const totalSaved = activeGoals.reduce((sum, g) => sum + Math.min(getProgress(g), g.targetAmount), 0)
+  const totalTarget = activeGoals.reduce((sum, g) => sum + g.targetAmount, 0)
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-5 pt-3 pb-2 flex justify-between items-center">
+      <div className="px-4 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
-        <div className="text-base font-medium">Цели</div>
+        <div style={{ flex: 1, textAlign: 'center', color: '#fff', fontSize: 22, fontWeight: 700 }}>
+          Цели
+        </div>
         <button
           onClick={() => { haptic.light(); setCreating(true) }}
-          className="text-accent text-xs bg-transparent border-0 cursor-pointer"
+          className="bg-transparent border-0 cursor-pointer"
+          style={{ width: 68, textAlign: 'right', color: '#ff1744', fontSize: 13, fontWeight: 500 }}
         >
           + Новая
         </button>
       </div>
 
-      <div className="px-5 py-4 pb-10">
+      {activeGoals.length > 0 && (
+        <div className="px-5 pt-2">
+          <div
+            style={{
+              padding: 14,
+              background: '#141414',
+              border: '0.5px solid #222',
+              borderRadius: 14,
+              textAlign: 'center',
+              marginBottom: 16,
+            }}
+          >
+            <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
+              НАКОПИЛ ВСЕГО
+            </div>
+            <div style={{ color: '#fff', fontSize: 28, fontWeight: 700, marginTop: 4 }}>
+              {Math.round(totalSaved).toLocaleString('ru-RU')} <span style={{ color: '#ff1744' }}>₽</span>
+            </div>
+            <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>
+              из {Math.round(totalTarget).toLocaleString('ru-RU')} ₽ по {activeGoals.length} цел{activeGoals.length === 1 ? 'и' : activeGoals.length < 5 ? 'ям' : 'ям'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-5 pb-10">
         {activeGoals.length === 0 ? (
           <div className="py-12 text-center">
             <div className="text-5xl mb-4">🎯</div>
