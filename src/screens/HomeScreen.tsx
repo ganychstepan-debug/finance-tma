@@ -73,60 +73,66 @@ export const HomeScreen: React.FC<Props> = ({
     <div className="flex flex-col overflow-y-auto pb-4">
       <HomeHeader month={month} onMonthChange={setMonth} onMenuOpen={onMenuOpen} onOpenCurrency={onOpenCurrency} />
 
-      <div className="px-5 py-5 text-center">
-        <div className="text-2xs text-text-muted uppercase tracking-[1px] mb-1.5">
-          Общий баланс
+      <div className="px-5 pt-3 pb-0" style={{ marginBottom: 10 }}>
+        <div className="text-2xs text-text-muted" style={{ letterSpacing: '1.5px', fontWeight: 500 }}>
+          ОБЩИЙ БАЛАНС
         </div>
-        <div
-          className="text-[48px] tracking-tight leading-none"
-          style={{
-            fontFamily: '"SF Pro Rounded", "SF Pro Display", -apple-system, system-ui, sans-serif',
-            fontWeight: 700,
-            letterSpacing: '-0.035em',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 6 }}>
           {canToggleCurrency ? (
             <button
               onClick={() => { haptic.select(); setShowInUSD((v) => !v) }}
-              className="text-accent bg-transparent border-0 cursor-pointer p-0 m-0 align-baseline"
-              style={{ fontSize: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
+              className="bg-transparent border-0 cursor-pointer p-0 m-0"
+              style={{ color: '#ff1744', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}
               aria-label="Переключить валюту отображения"
             >
               {currencySign(displayCurrency)}
             </button>
           ) : (
-            <span className="text-accent">{currencySign(displayCurrency)}</span>
-          )}{' '}
-          {totalStr}
+            <span style={{ color: '#ff1744', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              {currencySign(displayCurrency)}
+            </span>
+          )}
+          <span style={{
+            color: '#fff', fontSize: 46, fontWeight: 700,
+            letterSpacing: '-0.035em', lineHeight: 1,
+            fontFamily: '"SF Pro Rounded", "SF Pro Display", -apple-system, system-ui, sans-serif',
+          }}>
+            {totalStr}
+          </span>
         </div>
+
         {monthDelta !== 0 && (
           <div
-            className={`inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-xl border ${
-              monthDelta > 0
-                ? 'bg-success/10 border-success/30 text-success'
-                : 'bg-accent/10 border-accent/30 text-accent'
-            }`}
-            style={{ borderWidth: '0.5px' }}
+            className="inline-flex items-center"
+            style={{
+              gap: 5,
+              padding: '4px 10px',
+              background: monthDelta > 0 ? 'rgba(0,200,100,0.08)' : 'rgba(255,23,68,0.08)',
+              border: `0.5px solid ${monthDelta > 0 ? 'rgba(0,200,100,0.2)' : 'rgba(255,23,68,0.2)'}`,
+              borderRadius: 999,
+              marginTop: 10,
+            }}
           >
-            <span className="text-xs">{monthDelta > 0 ? '▲' : '▼'}</span>
-            <span className="text-xs">
-              {monthDelta > 0 ? '+' : '−'}{formatMoneyShort(monthDelta)} ₽ за месяц
+            <svg width="9" height="9" viewBox="0 0 24 24" fill={monthDelta > 0 ? '#00c864' : '#ff1744'}>
+              <path d={monthDelta > 0 ? 'M12 4L22 18H2z' : 'M12 20L2 6h20z'} />
+            </svg>
+            <span style={{
+              color: monthDelta > 0 ? '#00c864' : '#ff1744',
+              fontSize: 11, fontWeight: 600,
+            }}>
+              {monthDelta > 0 ? '+' : '−'}{formatMoneyShort(Math.abs(monthDelta))} ₽ за месяц
             </span>
           </div>
         )}
       </div>
 
-      <div className="px-5 mb-3 flex justify-between items-baseline">
-        <span className="text-sm font-medium">Счета</span>
-        <button
-          onClick={onOpenAccounts}
-          className="text-xs text-accent bg-transparent border-0 cursor-pointer p-0"
-        >
-          Все →
-        </button>
+      <div className="px-5 pt-5 mb-2">
+        <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
+          СЧЕТА
+        </div>
       </div>
 
-      <div className="px-5 flex gap-2.5 scroll-x mb-5">
+      <div className="px-5 flex gap-2 scroll-x mb-5" style={{ paddingBottom: 4 }}>
         {visibleAccounts.length === 0 ? (
           <button
             onClick={onOpenAccountNew}
@@ -151,14 +157,17 @@ export const HomeScreen: React.FC<Props> = ({
       </div>
 
       {/* Блок целей */}
-      <div className="px-5 mb-3 flex justify-between items-baseline">
-        <span className="text-sm font-medium">🎯 Цели накопления</span>
+      <div className="px-5 mb-2 flex justify-between items-baseline">
+        <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
+          ЦЕЛИ
+        </div>
         {activeGoals.length > 0 && (
           <button
             onClick={onOpenGoals}
-            className="text-xs text-accent bg-transparent border-0 cursor-pointer p-0"
+            className="text-xs bg-transparent border-0 cursor-pointer p-0"
+            style={{ color: '#ff1744', fontWeight: 500 }}
           >
-            Все →
+            все ›
           </button>
         )}
       </div>
@@ -211,16 +220,17 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </div>
 
-      <div className="px-5 mb-3 flex justify-between items-baseline">
-        <span className="text-sm font-medium">
-          {recentTx.length > 0 ? 'Последние за месяц' : 'В этом месяце'}
-        </span>
+      <div className="px-5 mb-2 flex justify-between items-baseline">
+        <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
+          {recentTx.length > 0 ? 'ПОСЛЕДНИЕ ЗА МЕСЯЦ' : 'В ЭТОМ МЕСЯЦЕ'}
+        </div>
         {recentTx.length > 0 && (
           <button
             onClick={onOpenTransactions}
-            className="text-xs text-accent bg-transparent border-0 cursor-pointer p-0"
+            className="text-xs bg-transparent border-0 cursor-pointer p-0"
+            style={{ color: '#ff1744', fontWeight: 500 }}
           >
-            Все →
+            все ›
           </button>
         )}
       </div>

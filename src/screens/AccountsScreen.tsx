@@ -19,7 +19,7 @@ const GROUP_ORDER: { id: AccountType; label: string; emoji: string }[] = [
 ]
 
 export const AccountsScreen: React.FC<Props> = ({ onClose, onAddNew, onEdit }) => {
-  const { accounts, toggleInTotal } = useStore()
+  const { accounts, toggleInTotal, settings } = useStore()
   const visible = accounts.filter((a) => !a.archived && a.type !== 'goal')
 
   const grouped: Record<string, Account[]> = {}
@@ -28,20 +28,56 @@ export const AccountsScreen: React.FC<Props> = ({ onClose, onAddNew, onEdit }) =
     if (grouped[a.type]) grouped[a.type].push(a)
   }
 
+  // v0.34: общий баланс и сумма по группам
+  const totalBalance = visible
+    .filter((a) => a.includeInTotal)
+    .reduce((sum, a) => sum + a.balance, 0)
+  const activeCount = visible.filter((a) => a.includeInTotal).length
+
+  const groupSum = (items: Account[]): number =>
+    items.reduce((sum, a) => sum + a.balance, 0)
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-5 pt-3 pb-2 flex justify-between items-center">
         <button onClick={onClose} className="text-text-secondary bg-transparent border-0 cursor-pointer text-base">
           ←
         </button>
-        <div className="text-base font-medium">Счета</div>
+        <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>Счета</div>
         <button
           onClick={onAddNew}
-          className="w-8 h-8 rounded-full bg-accent border-0 flex items-center justify-center text-white text-xl font-light cursor-pointer"
+          className="bg-transparent border-0 cursor-pointer"
+          style={{ color: '#ff1744', fontSize: 13, fontWeight: 500 }}
         >
-          +
+          + Добавить
         </button>
       </div>
+
+      {/* v0.34: общий баланс */}
+      {visible.length > 0 && (
+        <div className="px-5 pt-2">
+          <div
+            style={{
+              padding: 14,
+              background: '#141414',
+              border: '0.5px solid #222',
+              borderRadius: 14,
+              textAlign: 'center',
+            }}
+          >
+            <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
+              ОБЩИЙ БАЛАНС
+            </div>
+            <div style={{ color: '#fff', fontSize: 30, fontWeight: 700, marginTop: 4 }}>
+              <span style={{ color: '#ff1744' }}>₽ </span>
+              {Math.round(totalBalance).toLocaleString('ru-RU')}
+            </div>
+            <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>
+              {activeCount} активн{activeCount === 1 ? 'ый' : activeCount < 5 ? 'ых' : 'ых'} счёт{activeCount === 1 ? '' : activeCount < 5 ? 'а' : 'ов'}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-5 py-3 space-y-5">
         {visible.length === 0 ? (
@@ -63,10 +99,16 @@ export const AccountsScreen: React.FC<Props> = ({ onClose, onAddNew, onEdit }) =
             if (items.length === 0) return null
             return (
               <div key={g.id}>
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <span className="text-sm">{g.emoji}</span>
-                  <span className="text-2xs text-text-muted uppercase tracking-wide">{g.label}</span>
-                  <span className="text-2xs text-text-faint">· {items.length}</span>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{g.emoji}</span>
+                    <span className="text-2xs uppercase tracking-wide" style={{ color: '#888', letterSpacing: '1px', fontWeight: 600 }}>
+                      {g.label}
+                    </span>
+                  </div>
+                  <span className="text-2xs" style={{ color: '#555' }}>
+                    {Math.round(groupSum(items)).toLocaleString('ru-RU')} ₽
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {items.map((a) => {

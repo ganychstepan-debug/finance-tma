@@ -140,7 +140,7 @@ export const CategoriesScreen: React.FC<Props> = ({ onAddNew, onEdit }) => {
           </div>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="px-5 grid grid-cols-5 gap-1.5">
+        <div className="px-5 grid grid-cols-4 gap-1.5">
           {categories.map((c) => (
             <CategoryGridItem
               key={c.id}
