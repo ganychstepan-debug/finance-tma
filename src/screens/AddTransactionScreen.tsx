@@ -93,7 +93,14 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         : result.amount.toFixed(2)
       setAmount(amountStr)
 
-      if (result.categoryId) setCategoryId(result.categoryId)
+      // v0.99: гарантируем что categoryId установлен (иначе «Подтвердить» не сработает)
+      if (result.categoryId) {
+        setCategoryId(result.categoryId)
+      } else {
+        // Fallback: если сервер не подобрал категорию — ставим первую из списка юзера
+        const fallback = visibleCategories[0]?.id
+        if (fallback && !categoryId) setCategoryId(fallback)
+      }
       if (result.date) {
         const parsed = new Date(result.date)
         if (!isNaN(parsed.getTime())) setTxDate(parsed)
@@ -172,6 +179,15 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   const keepAsOne = () => {
     // v0.96: не сохраняем автоматически — юзер видит заполненную форму и сам жмёт «Подтвердить»
     haptic.light()
+    // v0.99: если категория пустая — ставим топ-1 из byCategory или fallback
+    if (!categoryId && splitDialog) {
+      const topCat = splitDialog.byCategory[0]
+      if (topCat?.categoryId) {
+        setCategoryId(topCat.categoryId)
+      } else if (visibleCategories[0]) {
+        setCategoryId(visibleCategories[0].id)
+      }
+    }
     setSplitDialog(null)
   }
 
