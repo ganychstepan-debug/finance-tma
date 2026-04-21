@@ -18,26 +18,40 @@ export const ChangelogScreen: React.FC<Props> = ({ onDone }) => {
         className="flex-1 min-h-0 overflow-y-auto"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)' }}
       >
-        <div className="px-6 pt-10 pb-4 text-center">
-          <div className="text-5xl mb-3">✨</div>
-          <div className="text-xs text-text-muted uppercase tracking-widest mb-1">
-            Версия {formatVersion(APP_VERSION)}
+        <div className="text-center" style={{ padding: '34px 22px 14px' }}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>✨</div>
+          <div style={{
+            color: '#666', fontSize: 10, letterSpacing: '2.5px',
+            fontWeight: 600, textTransform: 'uppercase', marginBottom: 6,
+          }}>
+            ВЕРСИЯ {formatVersion(APP_VERSION).toUpperCase()}
           </div>
-          <div className="text-2xl font-medium mb-1 leading-tight">
+          <div style={{
+            color: '#fff', fontSize: 22, fontWeight: 500,
+            marginBottom: 3, letterSpacing: '-0.01em',
+          }}>
             Что нового
           </div>
-          <div className="text-sm text-text-secondary px-4">
+          <div style={{ color: '#aaa', fontSize: 12, padding: '0 14px' }}>
             {current.title}
           </div>
         </div>
 
-        <div className="px-5 mt-2">
-          <div className="bg-bg-secondary border border-accent/30 rounded-card p-4 shadow-[0_0_24px_rgba(255,0,51,0.15)]">
-            <div className="space-y-3">
+        <div className="px-4" style={{ marginTop: 6 }}>
+          <div
+            style={{
+              padding: 14,
+              background: '#141414',
+              border: '0.5px solid rgba(255,23,68,0.3)',
+              borderRadius: 16,
+              boxShadow: '0 0 24px rgba(255,23,68,0.15)',
+            }}
+          >
+            <div className="flex flex-col" style={{ gap: 10 }}>
               {current.items.map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <span className="text-accent text-sm mt-0.5 shrink-0">▸</span>
-                  <div className="text-sm text-white leading-relaxed flex-1">
+                <div key={i} className="flex items-start" style={{ gap: 10 }}>
+                  <span style={{ color: '#ff1744', fontSize: 12, marginTop: 1 }}>▸</span>
+                  <div style={{ color: '#fff', fontSize: 12, lineHeight: 1.5, flex: 1 }}>
                     {item}
                   </div>
                 </div>
@@ -47,29 +61,39 @@ export const ChangelogScreen: React.FC<Props> = ({ onDone }) => {
         </div>
 
         {older.length > 0 && (
-          <div className="px-5 mt-6 mb-4">
-            <div className="text-[10px] text-text-muted uppercase tracking-widest mb-2.5 px-1">
+          <div style={{ padding: '22px 16px 14px' }}>
+            <div style={{
+              color: '#666', fontSize: 9, letterSpacing: '2px',
+              fontWeight: 600, textTransform: 'uppercase', marginBottom: 10, paddingLeft: 2,
+            }}>
               Прошлые обновления
             </div>
-            <div className="space-y-3">
+            <div className="flex flex-col" style={{ gap: 8 }}>
               {older.map((entry) => (
-                <div key={entry.version} className="bg-bg-secondary/60 border border-border rounded-btn p-3">
-                  <div className="flex items-baseline gap-2 mb-1.5">
-                    <span className="text-[10px] text-accent font-medium uppercase tracking-wide">
+                <div
+                  key={entry.version}
+                  style={{
+                    padding: '10px 12px',
+                    background: 'rgba(20,20,20,0.6)',
+                    border: '0.5px solid #222',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div className="flex items-baseline" style={{ gap: 8, marginBottom: 4 }}>
+                    <span style={{
+                      color: '#ff1744', fontSize: 10, fontWeight: 600,
+                      textTransform: 'uppercase',
+                    }}>
                       v{entry.version}
                     </span>
-                    <span className="text-xs text-text-secondary">{entry.title}</span>
+                    <span style={{ color: '#aaa', fontSize: 11 }}>{entry.title}</span>
                   </div>
-                  <div className="space-y-1">
+                  <div style={{ color: '#666', fontSize: 10, lineHeight: 1.4, paddingLeft: 8 }}>
                     {entry.items.slice(0, 3).map((item, i) => (
-                      <div key={i} className="text-[11px] text-text-muted leading-snug pl-2">
-                        · {item}
-                      </div>
+                      <div key={i}>· {item}</div>
                     ))}
                     {entry.items.length > 3 && (
-                      <div className="text-[11px] text-text-faint pl-2">
-                        · и ещё {entry.items.length - 3}
-                      </div>
+                      <div>· и ещё {entry.items.length - 3}</div>
                     )}
                   </div>
                 </div>
@@ -81,12 +105,26 @@ export const ChangelogScreen: React.FC<Props> = ({ onDone }) => {
 
       {/* Закреплённая кнопка */}
       <div
-        className="shrink-0 px-5 pt-3 bg-bg-primary border-t border-border/40"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+        className="shrink-0"
+        style={{
+          padding: '10px 18px',
+          background: '#0a0a0a',
+          borderTop: '0.5px solid rgba(51,51,51,0.4)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
+        }}
       >
         <button
           onClick={() => { haptic.success(); onDone() }}
-          className="w-full py-4 bg-accent border-0 rounded-btn text-white text-base font-medium cursor-pointer shadow-[0_4px_20px_rgba(255,0,51,0.4)] active:scale-[0.98] transition-transform"
+          className="w-full cursor-pointer border-0 active:scale-[0.98] transition-transform"
+          style={{
+            padding: 14,
+            background: '#ff1744',
+            borderRadius: 14,
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: '0 4px 20px rgba(255,23,68,0.4)',
+          }}
         >
           Понятно
         </button>

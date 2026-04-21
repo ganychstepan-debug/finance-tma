@@ -54,40 +54,61 @@ export const ReferralScreen: React.FC<Props> = ({ onClose }) => {
       </div>
 
       {/* Hero */}
-      <div className="px-6 pt-6 pb-4 text-center relative">
+      <div className="text-center relative" style={{ padding: '20px 24px 12px' }}>
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(circle at 50% 30%, rgba(var(--c-accent-glow-strong),0.15), transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle at 50% 30%, rgba(255,23,68,0.15), transparent 70%)' }}
         />
         <div className="relative z-10">
           <div
-            className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center text-5xl"
+            className="mx-auto flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #ff0033, #8a001c)',
-              boxShadow: '0 0 40px rgba(var(--c-accent-glow-strong),0.4), 0 0 80px rgba(var(--c-accent-glow-strong),0.2)',
+              width: 88, height: 88,
+              marginBottom: 16,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #ff1744, #8a001c)',
+              fontSize: 42,
+              boxShadow: '0 0 40px rgba(255,23,68,0.4), 0 0 80px rgba(255,23,68,0.2)',
             }}
           >
             🎁
           </div>
-          <div className="text-2xl font-medium mb-2 leading-tight">
+          <div style={{
+            color: '#fff', fontSize: 22, fontWeight: 500,
+            marginBottom: 6, letterSpacing: '-0.01em',
+          }}>
             Зови друзей
           </div>
-          <div className="text-sm text-text-secondary max-w-xs mx-auto">
+          <div style={{ color: '#aaa', fontSize: 12, lineHeight: 1.5, maxWidth: 270, margin: '0 auto' }}>
             Пока ничего не даём — но когда выйдем из беты, активные пригласившие получат плюшки первыми.
           </div>
         </div>
       </div>
 
       {/* Счётчик */}
-      <div className="px-5 mt-4">
-        <div className="bg-bg-secondary rounded-card p-5 text-center border border-border">
-          <div className="text-[10px] text-text-muted uppercase tracking-widest mb-2">
+      <div className="px-4" style={{ paddingTop: 14 }}>
+        <div
+          className="text-center"
+          style={{
+            padding: 18,
+            background: '#141414',
+            border: '0.5px solid #222',
+            borderRadius: 16,
+          }}
+        >
+          <div style={{
+            color: '#666', fontSize: 9, letterSpacing: '2px',
+            fontWeight: 600, textTransform: 'uppercase', marginBottom: 8,
+          }}>
             Приглашено друзей
           </div>
-          <div className="text-5xl font-light text-accent leading-none mb-2">
+          <div style={{
+            color: '#ff1744', fontSize: 46, fontWeight: 300,
+            lineHeight: 1, marginBottom: 8,
+          }}>
             {inviteCount === null ? '—' : inviteCount}
           </div>
-          <div className="text-[11px] text-text-muted max-w-[240px] mx-auto leading-snug">
+          <div style={{ color: '#666', fontSize: 10, lineHeight: 1.4, maxWidth: 220, margin: '0 auto' }}>
             Засчитывается когда друг открыл бота по твоей ссылке и прошёл онбординг.
           </div>
         </div>

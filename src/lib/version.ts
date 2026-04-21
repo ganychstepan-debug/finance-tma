@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 58   // = v0.52 — селектор счёта dropdown
+export const APP_VERSION = 59   // = v0.53 — 4.11 Changelog + 4.12 Referral под макет
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================
