@@ -169,29 +169,9 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   }
 
   const keepAsOne = () => {
-    if (!splitDialog) return
-    haptic.success()
-    // v0.92: «Одной операцией» = сохранить всё вместе одной транзакцией
-    // с суммой = итог чека и комментарием = все товары
-    const fallbackCategoryId = visibleCategories[0]?.id
-    // Если категория уже выбрана (из categoryId) — используем её, иначе fallback
-    const catId = categoryId || fallbackCategoryId
-    if (!accountId || !catId) {
-      setSplitDialog(null)
-      return
-    }
-    const allItems = splitDialog.items.map((it) => it.name).join(', ').slice(0, 200)
-    addTransaction({
-      type: 'expense' as TransactionType,
-      amount: splitDialog.total,
-      currency: account?.currency ?? 'RUB',
-      accountId,
-      categoryId: catId,
-      date: txDate.toISOString(),
-      comment: allItems || splitDialog.merchant || undefined,
-    })
+    // v0.96: не сохраняем автоматически — юзер видит заполненную форму и сам жмёт «Подтвердить»
+    haptic.light()
     setSplitDialog(null)
-    onDone()
   }
 
   const account = visibleAccounts.find((a) => a.id === accountId)
