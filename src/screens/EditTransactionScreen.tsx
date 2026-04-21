@@ -149,18 +149,62 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
 
       {/* Комментарий */}
       <div className="px-5 pb-3.5">
-        <textarea
-          placeholder="Комментарий (не обязательно)"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          onFocus={() => setCommentFocused(true)}
-          onBlur={() => setCommentFocused(false)}
-          maxLength={300}
-          rows={commentFocused || comment.length > 60 ? 4 : 1}
-          className="w-full px-3.5 py-3 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border resize-none"
-          style={{ minHeight: 44, fontFamily: 'inherit' }}
-        />
+        <button
+          onClick={() => { haptic.light(); setCommentFocused(true) }}
+          className="w-full px-3.5 py-3 bg-bg-secondary border border-border rounded-btn text-left cursor-pointer"
+          style={{ minHeight: 44 }}
+        >
+          <div style={{ color: '#888', fontSize: 10, letterSpacing: '1px', fontWeight: 500, textTransform: 'uppercase', marginBottom: 4 }}>
+            Комментарий
+          </div>
+          <div
+            className="text-white text-sm"
+            style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              color: comment ? '#fff' : '#666',
+            }}
+          >
+            {comment || 'Нажми чтобы добавить'}
+          </div>
+        </button>
       </div>
+
+      {/* v0.97: Полноэкранный редактор комментария */}
+      {commentFocused && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-bg-primary animate-fade-in">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <button
+              onClick={() => setCommentFocused(false)}
+              className="bg-transparent border-0 text-text-muted text-sm cursor-pointer"
+            >
+              Отмена
+            </button>
+            <div className="text-white text-sm font-medium">Комментарий</div>
+            <button
+              onClick={() => { haptic.select(); setCommentFocused(false) }}
+              className="bg-transparent border-0 text-accent text-sm font-medium cursor-pointer"
+            >
+              Готово
+            </button>
+          </div>
+          <div className="flex-1 p-5">
+            <textarea
+              autoFocus
+              placeholder="Что это было? Магазин, описание, товары..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              maxLength={300}
+              className="w-full h-full px-4 py-3 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border resize-none"
+              style={{ fontFamily: 'inherit', lineHeight: 1.5 }}
+            />
+          </div>
+          <div className="px-5 pb-5 text-text-muted text-xs text-right">
+            {comment.length} / 300
+          </div>
+        </div>
+      )}
 
       {/* Дата */}
       <div className="px-5 pb-3.5">
@@ -176,12 +220,10 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
         </button>
       </div>
 
-      {/* Клавиатура — скрываем когда юзер печатает в комментарии */}
-      {!commentFocused && (
-        <div className="px-5 pb-3">
-          <NumPad value={amount} onChange={setAmount} />
-        </div>
-      )}
+      {/* Клавиатура */}
+      <div className="px-5 pb-3">
+        <NumPad value={amount} onChange={setAmount} />
+      </div>
 
       {/* Удалить */}
       <div className="px-5 pb-6">
