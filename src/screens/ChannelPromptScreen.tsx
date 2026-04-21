@@ -40,39 +40,71 @@ export const ChannelPromptScreen: React.FC<Props> = ({ onDone }) => {
       />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center relative z-10">
-        {/* Большая иконка с пульсом */}
-        <div className="relative mb-6">
-          <div
-            className="w-32 h-32 rounded-full flex items-center justify-center text-6xl"
-            style={{
-              background: 'linear-gradient(135deg, #ff1744, #8a001c)',
-              boxShadow: '0 0 60px rgba(255,23,68,0.55), 0 0 100px rgba(255,23,68,0.3)',
-              animation: 'pulse-glow 2.8s ease-in-out infinite',
-            }}
-          >
-            📢
-          </div>
+        {/* v0.34: Иконка 120×120 скруглённая (не круг) */}
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: 120,
+            height: 120,
+            borderRadius: 34,
+            background: 'linear-gradient(135deg, #ff1744, #8a001c)',
+            boxShadow: '0 0 60px rgba(255,23,68,0.55), 0 0 100px rgba(255,23,68,0.3)',
+            animation: 'pulse-glow 2.8s ease-in-out infinite',
+            fontSize: 60,
+          }}
+        >
+          📣
         </div>
 
-        {/* Заголовок */}
-        <div className="text-3xl font-semibold mb-3 leading-tight">
-          Будь в курсе первым
-        </div>
-        <div className="text-base text-text-secondary mb-2 max-w-xs leading-relaxed">
-          Вступай в канал приложения
-        </div>
-        <div className="text-sm text-accent font-medium mb-8">
-          @{APP_CHANNEL_USERNAME}
+        {/* Заголовок в 2 строки */}
+        <div style={{
+          color: '#fff',
+          fontSize: 28,
+          fontWeight: 700,
+          marginTop: 28,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.1,
+        }}>
+          Канал<br/>приложения
         </div>
 
-        {/* Что будет в канале */}
-        <div className="bg-bg-secondary/60 backdrop-blur rounded-card p-4 mb-8 max-w-sm w-full border border-border">
-          <div className="space-y-2.5 text-left">
-            <BulletItem text="Анонсы обновлений и новых фич" />
-            <BulletItem text="Советы как тратить меньше" />
-            <BulletItem text="Голосования за следующие фичи" />
-            <BulletItem text="Быстрая поддержка и фидбэк" />
-          </div>
+        {/* Пилюля @savemoney_app */}
+        <div
+          className="inline-flex items-center"
+          style={{
+            gap: 6,
+            marginTop: 14,
+            padding: '5px 12px',
+            borderRadius: 999,
+            background: 'rgba(255,23,68,0.1)',
+            border: '0.5px solid rgba(255,23,68,0.3)',
+          }}
+        >
+          <span style={{ color: '#ff1744', fontSize: 13, fontWeight: 600 }}>
+            @{APP_CHANNEL_USERNAME}
+          </span>
+        </div>
+
+        {/* Подзаголовок */}
+        <div style={{
+          color: '#bbb',
+          fontSize: 14,
+          marginTop: 22,
+          textAlign: 'center',
+          maxWidth: 280,
+          lineHeight: 1.5,
+        }}>
+          Новости релизов, подсказки по учёту финансов и редкие плюшки для подписчиков
+        </div>
+
+        {/* 3 карточки фич */}
+        <div
+          className="flex flex-col"
+          style={{ gap: 8, marginTop: 26, width: '100%', maxWidth: 300 }}
+        >
+          <FeatureRow icon="✨" text="Новые функции — узнаешь первым" />
+          <FeatureRow icon="💡" text="Разборы: как копить и не тратить" />
+          <FeatureRow icon="🎁" text="Ранний доступ к бонусам после беты" />
         </div>
       </div>
 
@@ -84,14 +116,32 @@ export const ChannelPromptScreen: React.FC<Props> = ({ onDone }) => {
         <button
           onClick={handleJoin}
           disabled={joining}
-          className="w-full py-4 rounded-btn text-base font-medium cursor-pointer bg-accent text-white border-0 shadow-[0_4px_24px_rgba(var(--c-accent-glow-strong),0.5)] active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2"
+          className="w-full cursor-pointer active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center"
+          style={{
+            padding: 16,
+            background: '#ff1744',
+            border: 0,
+            borderRadius: 14,
+            color: '#fff',
+            fontSize: 15,
+            fontWeight: 600,
+            boxShadow: '0 4px 24px rgba(255,23,68,0.5)',
+            gap: 8,
+            maxWidth: 300,
+            margin: '0 auto',
+          }}
         >
-          <span>{joining ? 'Открываем...' : 'Вступить в канал'}</span>
-          {!joining && <span className="text-lg leading-none">→</span>}
+          <span>{joining ? 'Открываем…' : 'Подписаться'}</span>
+          {!joining && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M7 17L17 7M17 7H8M17 7V16"/>
+            </svg>
+          )}
         </button>
         <button
           onClick={handleSkip}
-          className="w-full py-3 mt-2 bg-transparent border-0 text-sm text-text-muted cursor-pointer active:text-text-secondary"
+          className="w-full bg-transparent border-0 cursor-pointer"
+          style={{ padding: '8px 14px', marginTop: 10, color: '#666', fontSize: 12 }}
         >
           Позже
         </button>
@@ -100,9 +150,18 @@ export const ChannelPromptScreen: React.FC<Props> = ({ onDone }) => {
   )
 }
 
-const BulletItem: React.FC<{ text: string }> = ({ text }) => (
-  <div className="flex items-start gap-2.5">
-    <span className="text-accent text-sm mt-0.5 shrink-0 leading-none">●</span>
-    <span className="text-sm text-white leading-snug">{text}</span>
+const FeatureRow: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
+  <div
+    className="flex items-center"
+    style={{
+      gap: 10,
+      padding: '10px 14px',
+      background: 'rgba(20,20,20,0.7)',
+      border: '0.5px solid #222',
+      borderRadius: 12,
+    }}
+  >
+    <span style={{ fontSize: 16 }}>{icon}</span>
+    <span style={{ color: '#ddd', fontSize: 12 }}>{text}</span>
   </div>
 )
