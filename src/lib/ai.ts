@@ -51,12 +51,28 @@ export const suggestEmoji = async (description: string): Promise<EmojiResult> =>
 // Скан чека — Gemini Vision
 // ============================================================================
 
+export interface ReceiptItem {
+  name: string
+  price: number
+  categoryName: string
+}
+export interface ReceiptCategoryGroup {
+  categoryName: string
+  categoryId?: string
+  total: number
+}
 export interface ReceiptScanResult {
   amount: number
+  subtotal?: number
+  discount?: number
   merchant: string
   date: string       // YYYY-MM-DD
   categoryId?: string
   categoryName: string
+  items: ReceiptItem[]
+  byCategory: ReceiptCategoryGroup[]
+  confidence: 'high' | 'medium' | 'low'
+  warning?: string
 }
 
 /**
@@ -126,9 +142,15 @@ export const scanReceipt = async (
   }
   return {
     amount: Number(data.amount) || 0,
+    subtotal: data.subtotal ? Number(data.subtotal) : undefined,
+    discount: data.discount ? Number(data.discount) : undefined,
     merchant: String(data.merchant || ''),
     date: String(data.date || new Date().toISOString().slice(0, 10)),
     categoryId: data.categoryId,
     categoryName: String(data.categoryName || ''),
+    items: Array.isArray(data.items) ? data.items : [],
+    byCategory: Array.isArray(data.byCategory) ? data.byCategory : [],
+    confidence: ['high', 'medium', 'low'].includes(data.confidence) ? data.confidence : 'medium',
+    warning: data.warning,
   }
 }

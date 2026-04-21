@@ -64,23 +64,35 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState<{ merchant: string } | null>(null)
+  // v0.87: диалог разбивки по категориям если чек содержит позиции из разных категорий
+  const [splitDialog, setSplitDialog] = useState<{
+    merchant: string
+    date: string
+    total: number
+    byCategory: Array<{ categoryName: string; categoryId?: string; total: number }>
+  } | null>(null)
+  const [scanWarning, setScanWarning] = useState<string | null>(null)
 
   const handleReceiptPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Сброс input чтобы можно было выбрать тот же файл снова
     if (fileInputRef.current) fileInputRef.current.value = ''
 
     haptic.light()
     setScanning(true)
     setScanError(null)
     setScanResult(null)
+    setScanWarning(null)
     try {
       const cats = visibleCategories.map((c) => ({ id: c.id, name: c.name }))
       const result = await scanReceipt(file, cats)
 
-      // Заполняем форму
-      setAmount(String(Math.round(result.amount)))
+      // v0.87: точное сохранение суммы с копейками
+      const amountStr = result.amount % 1 === 0
+        ? String(Math.round(result.amount))
+        : result.amount.toFixed(2)
+      setAmount(amountStr)
+
       if (result.categoryId) setCategoryId(result.categoryId)
       if (result.date) {
         const parsed = new Date(result.date)
@@ -89,6 +101,20 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
       if (result.merchant) {
         setComment(result.merchant)
         setScanResult({ merchant: result.merchant })
+      }
+      if (result.warning) setScanWarning(result.warning)
+
+      // v0.87: если в чеке больше 1 категории с суммой >10% — предложить разбить
+      const significant = (result.byCategory || []).filter(
+        (g) => result.amount > 0 && g.total / result.amount > 0.1
+      )
+      if (significant.length > 1 && result.amount > 0) {
+        setSplitDialog({
+          merchant: result.merchant,
+          date: result.date,
+          total: result.amount,
+          byCategory: result.byCategory,
+        })
       }
 
       haptic.success()
@@ -99,6 +125,36 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
     } finally {
       setScanning(false)
     }
+  }
+
+  // v0.87: применить разбивку — создаёт N операций и закрывает экран
+  const applySplit = () => {
+    if (!splitDialog || !accountId) return
+    haptic.success()
+    const baseDate = (() => {
+      const d = new Date(splitDialog.date)
+      return isNaN(d.getTime()) ? txDate : d
+    })()
+    for (const g of splitDialog.byCategory) {
+      if (!g.categoryId) continue // skip unmatched
+      if (g.total <= 0) continue
+      addTransaction({
+        type: 'expense' as TransactionType,
+        amount: g.total,
+        currency: account?.currency ?? 'RUB',
+        accountId,
+        categoryId: g.categoryId,
+        date: baseDate.toISOString(),
+        comment: splitDialog.merchant || undefined,
+      })
+    }
+    setSplitDialog(null)
+    onDone()
+  }
+
+  const keepAsOne = () => {
+    haptic.light()
+    setSplitDialog(null)
   }
 
   const account = visibleAccounts.find((a) => a.id === accountId)
@@ -170,7 +226,6 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           onChange={handleReceiptPick}
           className="hidden"
         />
@@ -693,6 +748,128 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
             >
               Ввести вручную
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* v0.87: Плашка с предупреждением от сканера */}
+      {scanWarning && !scanning && (
+        <div
+          style={{
+            position: 'absolute', left: 16, right: 16, bottom: 16,
+            padding: '12px 14px',
+            background: 'rgba(255, 170, 0, 0.1)',
+            border: '0.5px solid rgba(255, 170, 0, 0.35)',
+            borderRadius: 12,
+            zIndex: 30,
+          }}
+        >
+          <div style={{ color: '#ffaa00', fontSize: 12, fontWeight: 600, marginBottom: 2 }}>
+            ⚠ Проверь сумму
+          </div>
+          <div style={{ color: '#ccc', fontSize: 11, lineHeight: 1.4 }}>
+            {scanWarning}
+          </div>
+          <button
+            onClick={() => setScanWarning(null)}
+            style={{
+              marginTop: 8, padding: '4px 10px',
+              background: 'rgba(255,170,0,0.15)', border: 0,
+              borderRadius: 8, color: '#ffaa00', fontSize: 11, fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Понятно
+          </button>
+        </div>
+      )}
+
+      {/* v0.87: Диалог разбивки по категориям */}
+      {splitDialog && (
+        <div
+          onClick={keepAsOne}
+          className="fixed inset-0 bg-black/70 flex items-end z-[90] animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full bg-bg-secondary rounded-t-3xl px-5 pt-5 pb-8 animate-slide-up max-h-[80vh] overflow-y-auto"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+          >
+            <div className="w-10 h-1 bg-bg-tertiary rounded-full mx-auto mb-4" />
+
+            <div style={{ textAlign: 'center', marginBottom: 6 }}>
+              <div style={{ color: '#fff', fontSize: 17, fontWeight: 600 }}>
+                Разбить по категориям?
+              </div>
+              <div style={{ color: '#aaa', fontSize: 12, marginTop: 4 }}>
+                В чеке {splitDialog.byCategory.length} разных категорий на {splitDialog.total.toFixed(2)} ₽
+              </div>
+            </div>
+
+            <div style={{ marginTop: 16, marginBottom: 16 }}>
+              {splitDialog.byCategory.map((g, i) => {
+                const matched = visibleCategories.find((c) => c.id === g.categoryId)
+                const pct = Math.round((g.total / splitDialog.total) * 100)
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 12px',
+                      background: '#1f1f1f',
+                      borderRadius: 12,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {matched ? (
+                      <CategoryIcon iconId={matched.icon} size="sm" variant="neutral" />
+                    ) : (
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                        ❓
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {g.categoryName}
+                      </div>
+                      <div style={{ color: '#666', fontSize: 10 }}>
+                        {pct}% от чека
+                      </div>
+                    </div>
+                    <div style={{ color: '#ff1744', fontSize: 14, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                      {g.total.toFixed(2)} ₽
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={keepAsOne}
+                style={{
+                  flex: 1, padding: 14,
+                  background: '#1f1f1f', border: 0, borderRadius: 14,
+                  color: '#aaa', fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Одной операцией
+              </button>
+              <button
+                onClick={applySplit}
+                disabled={!splitDialog.byCategory.some((g) => g.categoryId)}
+                style={{
+                  flex: 1, padding: 14,
+                  background: '#ff1744', border: 0, borderRadius: 14,
+                  color: '#fff', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer',
+                  opacity: splitDialog.byCategory.some((g) => g.categoryId) ? 1 : 0.5,
+                }}
+              >
+                Разбить ({splitDialog.byCategory.filter((g) => g.categoryId).length})
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,11 +1,21 @@
 /**
  * POST /api/receipt-scan
  *
- * Принимает JSON: { imageBase64: "iVBORw0K...", categories: [{id, name}] }
- * Возвращает: { amount, merchant, date, categoryGuess, categoryId? }
- *
- * OpenAI Vision (gpt-4o-mini) читает фото чека, извлекает сумму, магазин, дату.
- * Пытается угадать категорию из предоставленного списка.
+ * v0.87: расширенный формат ответа.
+ * Принимает: { imageBase64, categories: [{id, name}] }
+ * Возвращает: {
+ *   amount: number,         // итог чека (ИТОГО К ОПЛАТЕ — после всех скидок)
+ *   subtotal?: number,      // подытог ДО скидок
+ *   discount?: number,      // сумма скидок
+ *   merchant: string,
+ *   date: string,           // YYYY-MM-DD
+ *   items: [{ name, price, categoryName }],   // позиции с категориями
+ *   byCategory: [{ categoryName, categoryId?, total }],
+ *   categoryId?: string,    // ID самой крупной категории
+ *   categoryName?: string,
+ *   confidence: 'high' | 'medium' | 'low',
+ *   warning?: string
+ * }
  */
 
 import {
@@ -27,24 +37,44 @@ const buildPrompt = (categories: ReceiptCategory[]): string => {
   const catList = categories.map((c, i) => `${i + 1}. ${c.name}`).join('\n')
   return `Ты распознаёшь данные с фото российского кассового чека.
 
-Верни ТОЛЬКО JSON в формате:
+Верни СТРОГО JSON:
 {
   "amount": 0,
+  "subtotal": 0,
+  "discount": 0,
   "merchant": "",
   "date": "YYYY-MM-DD",
-  "categoryName": ""
+  "items": [
+    { "name": "", "price": 0, "categoryName": "" }
+  ],
+  "confidence": "high"
 }
 
-Правила:
-- amount — итоговая сумма чека (ИТОГО / К ОПЛАТЕ) в рублях, число
-- merchant — название магазина/заведения (короткое, 1-3 слова)
-- date — дата покупки в формате YYYY-MM-DD, если не видно — сегодняшняя
-- categoryName — подбери САМУЮ подходящую категорию из списка ниже, верни её точное название
-- Если чек нечитаемый или это не чек — верни {"amount": 0, "merchant": "", "date": "", "categoryName": ""}
-- Не добавляй никакого текста вокруг JSON, только сам JSON
+КАК ИЗВЛЕКАТЬ СУММУ (САМОЕ ВАЖНОЕ):
+1. ГЛАВНЫЙ приоритет — строка "ИТОГ" / "ИТОГО" / "К ОПЛАТЕ" / "К ОПЛ." — это финальная сумма после всех скидок. Именно она в amount.
+2. "ПОДЫТОГ" / "ИТОГ БЕЗ СКИДКИ" — это сумма ДО скидок, клади её в subtotal.
+3. "СКИДКА НА ЧЕК" / "СКИДКА ПО КАРТЕ" — разница между подытогом и итогом, клади в discount.
+4. Если видишь "БЕЗНАЛИЧНЫМИ" или "СУММА (Руб)" после "ОДОБРЕНО" — это тоже итоговая сумма.
+5. ПРОВЕРЬ: amount должно быть МЕНЬШЕ или РАВНО subtotal. Если наоборот — ты перепутал, исправь.
+6. НЕ суммируй позиции сам чтобы получить amount. Ищи строку итога. Сложение позиций — только последний fallback.
 
-Доступные категории:
-${catList}`
+КАК ИЗВЛЕКАТЬ ПОЗИЦИИ (items):
+- Каждая купленная позиция = один элемент items
+- name — короткое название товара (до 30 символов), можно сократить
+- price — финальная стоимость этой позиции в чеке (колонка "Итого" по позиции, с учётом количества)
+- categoryName — подбери из списка доступных категорий (см. ниже) САМУЮ подходящую для этой позиции
+- Если позиций больше 15 — сгруппируй похожие (например "молочка": творог, сыр, йогурт → одна позиция "Молочка")
+
+ОБЩЕЕ:
+- merchant — название магазина (Пятёрочка, Магнит, Ашан, Кафе Ромашка и т.п.)
+- date — дата покупки YYYY-MM-DD; если не видно — сегодня
+- confidence: "high" если чек чёткий и ИТОГ точно виден; "medium" если что-то смазано но основное читаемо; "low" если фото плохое, сумма итога не видна, или ты считал сумму сам
+- Если не чек или не читается: { "amount": 0, "items": [], "confidence": "low" }
+
+Доступные категории для items.categoryName и итоговой:
+${catList}
+
+Только JSON. Никакого текста вокруг.`
 }
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
@@ -70,16 +100,17 @@ const callOpenAiVision = async (prompt: string, imageBase64: string): Promise<st
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      max_tokens: 400,
-      temperature: 0.1,
+      // v0.87: gpt-4o (не mini) для чтения мелкого текста чеков + detail:high
+      model: 'gpt-4o',
+      max_tokens: 1500,
+      temperature: 0.05,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'user',
           content: [
             { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } },
+            { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
           ],
         },
       ],
@@ -97,6 +128,12 @@ const callOpenAiVision = async (prompt: string, imageBase64: string): Promise<st
     throw new Error('OpenAI вернул неожиданный формат')
   }
   return text.trim()
+}
+
+interface ReceiptItem {
+  name: string
+  price: number
+  categoryName: string
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -120,14 +157,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (!imageBase64) {
     return json({ error: 'Нужно фото чека' }, 400)
   }
-  if (imageBase64.length > 2_500_000) {
-    return json({ error: 'Фото слишком большое (макс ~2 МБ)' }, 400)
+  if (imageBase64.length > 5_500_000) {
+    return json({ error: 'Фото слишком большое (макс ~4 МБ)' }, 400)
   }
   if (categories.length === 0) {
     return json({ error: 'Нет категорий для классификации' }, 400)
   }
 
-  // Модерация названий категорий (вдруг юзер обошёл клиент)
   for (const c of categories) {
     if (!moderateInput(c.name).ok) {
       return json({ error: 'Запрещённые названия категорий', blocked: true }, 403)
@@ -138,7 +174,6 @@ export default async function handler(req: Request): Promise<Response> {
     const prompt = buildPrompt(categories)
     const response = await callOpenAiVision(prompt, imageBase64)
 
-    // Gemini иногда оборачивает JSON в ```json ... ``` даже при responseMimeType.
     const cleaned = response
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -153,15 +188,69 @@ export default async function handler(req: Request): Promise<Response> {
       return json({ error: 'Не удалось распознать чек, попробуй переснять' }, 502)
     }
 
-    const amount = Number(parsed?.amount) || 0
+    let amount = Number(parsed?.amount) || 0
+    const subtotal = Number(parsed?.subtotal) || 0
+    const discount = Number(parsed?.discount) || 0
     const merchant = String(parsed?.merchant ?? '').trim().slice(0, 60)
     const date = String(parsed?.date ?? '').trim()
-    const categoryName = String(parsed?.categoryName ?? '').trim()
+    let confidence: 'high' | 'medium' | 'low' =
+      ['high', 'medium', 'low'].includes(parsed?.confidence) ? parsed.confidence : 'medium'
 
-    // Находим id категории по имени
-    const matched = categories.find(
-      (c) => c.name.toLowerCase() === categoryName.toLowerCase()
-    )
+    const rawItems: any[] = Array.isArray(parsed?.items) ? parsed.items : []
+    const items: ReceiptItem[] = rawItems
+      .map((it) => {
+        const name = String(it?.name ?? '').trim().slice(0, 40)
+        const price = Number(it?.price) || 0
+        const categoryName = String(it?.categoryName ?? '').trim()
+        if (!name || price <= 0) return null
+        return { name, price, categoryName }
+      })
+      .filter((x): x is ReceiptItem => x !== null)
+
+    // Sanity check: amount должно быть <= subtotal (если оба видны)
+    if (subtotal > 0 && amount > subtotal) {
+      const tmp = amount
+      amount = subtotal
+      confidence = 'low'
+      console.warn('Receipt scan: swapped subtotal<->amount', tmp, subtotal)
+    }
+
+    // Проверка: если есть позиции, их сумма vs amount
+    let warning: string | undefined
+    if (items.length > 0 && amount > 0) {
+      const itemsTotal = items.reduce((s, i) => s + i.price, 0)
+      const diff = Math.abs(itemsTotal - amount)
+      if (diff > 10 && diff / amount > 0.02) {
+        const expectedDiff = discount > 0 ? Math.abs((itemsTotal - discount) - amount) : diff
+        if (expectedDiff > 10) {
+          warning = `Сумма позиций (${itemsTotal.toFixed(2)}) не совпадает с итогом (${amount.toFixed(2)}). Проверь.`
+          if (confidence === 'high') confidence = 'medium'
+        }
+      }
+    }
+
+    // Группировка по категориям
+    const byCatMap = new Map<string, number>()
+    for (const it of items) {
+      const key = it.categoryName || 'Другое'
+      byCatMap.set(key, (byCatMap.get(key) || 0) + it.price)
+    }
+    const byCategory = Array.from(byCatMap.entries())
+      .map(([categoryName, total]) => {
+        const matched = categories.find(
+          (c) => c.name.toLowerCase() === categoryName.toLowerCase()
+        )
+        return {
+          categoryName: matched?.name || categoryName,
+          categoryId: matched?.id,
+          total: Math.round(total * 100) / 100,
+        }
+      })
+      .sort((a, b) => b.total - a.total)
+
+    const topCat = byCategory[0]
+    const categoryId = topCat?.categoryId
+    const categoryName = topCat?.categoryName
 
     if (amount <= 0) {
       return json({
@@ -172,10 +261,16 @@ export default async function handler(req: Request): Promise<Response> {
 
     return json({
       amount,
+      subtotal: subtotal || undefined,
+      discount: discount || undefined,
       merchant,
       date: date || new Date().toISOString().slice(0, 10),
-      categoryId: matched?.id,
-      categoryName: matched?.name || categoryName,
+      items,
+      byCategory,
+      categoryId,
+      categoryName,
+      confidence,
+      warning,
     })
   } catch (e) {
     const msg = (e as Error).message
