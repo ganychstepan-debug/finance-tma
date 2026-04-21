@@ -72,7 +72,6 @@ export interface ReceiptScanResult {
   items: ReceiptItem[]
   byCategory: ReceiptCategoryGroup[]
   confidence: 'high' | 'medium' | 'low'
-  warning?: string
 }
 
 /**
@@ -151,6 +150,5 @@ export const scanReceipt = async (
     items: Array.isArray(data.items) ? data.items : [],
     byCategory: Array.isArray(data.byCategory) ? data.byCategory : [],
     confidence: ['high', 'medium', 'low'].includes(data.confidence) ? data.confidence : 'medium',
-    warning: data.warning,
   }
 }

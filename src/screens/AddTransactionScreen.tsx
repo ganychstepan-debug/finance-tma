@@ -70,8 +70,8 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
     date: string
     total: number
     byCategory: Array<{ categoryName: string; categoryId?: string; total: number }>
+    items: Array<{ name: string; price: number; categoryName: string }>
   } | null>(null)
-  const [scanWarning, setScanWarning] = useState<string | null>(null)
 
   const handleReceiptPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -82,7 +82,6 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
     setScanning(true)
     setScanError(null)
     setScanResult(null)
-    setScanWarning(null)
     try {
       const cats = visibleCategories.map((c) => ({ id: c.id, name: c.name }))
       const result = await scanReceipt(file, cats)
@@ -98,11 +97,19 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         const parsed = new Date(result.date)
         if (!isNaN(parsed.getTime())) setTxDate(parsed)
       }
+
+      // v0.88: в комментарий — список товаров через запятую
+      const itemsText = (result.items || [])
+        .map((it) => it.name)
+        .filter(Boolean)
+        .join(', ')
+        .slice(0, 200)
+      if (itemsText) {
+        setComment(itemsText)
+      }
       if (result.merchant) {
-        setComment(result.merchant)
         setScanResult({ merchant: result.merchant })
       }
-      if (result.warning) setScanWarning(result.warning)
 
       // v0.87: если в чеке больше 1 категории с суммой >10% — предложить разбить
       const significant = (result.byCategory || []).filter(
@@ -114,6 +121,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           date: result.date,
           total: result.amount,
           byCategory: result.byCategory,
+          items: result.items || [],
         })
       }
 
@@ -136,8 +144,14 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
       return isNaN(d.getTime()) ? txDate : d
     })()
     for (const g of splitDialog.byCategory) {
-      if (!g.categoryId) continue // skip unmatched
+      if (!g.categoryId) continue
       if (g.total <= 0) continue
+      // v0.88: комментарий для каждой разбитой операции — товары той же категории
+      const itemsInCat = splitDialog.items
+        .filter((it) => it.categoryName === g.categoryName)
+        .map((it) => it.name)
+        .join(', ')
+        .slice(0, 200)
       addTransaction({
         type: 'expense' as TransactionType,
         amount: g.total,
@@ -145,7 +159,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         accountId,
         categoryId: g.categoryId,
         date: baseDate.toISOString(),
-        comment: splitDialog.merchant || undefined,
+        comment: itemsInCat || splitDialog.merchant || undefined,
       })
     }
     setSplitDialog(null)
@@ -749,38 +763,6 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
               Ввести вручную
             </button>
           </div>
-        </div>
-      )}
-
-      {/* v0.87: Плашка с предупреждением от сканера */}
-      {scanWarning && !scanning && (
-        <div
-          style={{
-            position: 'absolute', left: 16, right: 16, bottom: 16,
-            padding: '12px 14px',
-            background: 'rgba(255, 170, 0, 0.1)',
-            border: '0.5px solid rgba(255, 170, 0, 0.35)',
-            borderRadius: 12,
-            zIndex: 30,
-          }}
-        >
-          <div style={{ color: '#ffaa00', fontSize: 12, fontWeight: 600, marginBottom: 2 }}>
-            ⚠ Проверь сумму
-          </div>
-          <div style={{ color: '#ccc', fontSize: 11, lineHeight: 1.4 }}>
-            {scanWarning}
-          </div>
-          <button
-            onClick={() => setScanWarning(null)}
-            style={{
-              marginTop: 8, padding: '4px 10px',
-              background: 'rgba(255,170,0,0.15)', border: 0,
-              borderRadius: 8, color: '#ffaa00', fontSize: 11, fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            Понятно
-          </button>
         </div>
       )}
 

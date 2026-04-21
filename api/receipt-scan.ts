@@ -215,15 +215,13 @@ export default async function handler(req: Request): Promise<Response> {
       console.warn('Receipt scan: swapped subtotal<->amount', tmp, subtotal)
     }
 
-    // Проверка: если есть позиции, их сумма vs amount
-    let warning: string | undefined
+    // v0.88: warning убран из UI; внутренне только меняем confidence если sanity-check сработал
     if (items.length > 0 && amount > 0) {
       const itemsTotal = items.reduce((s, i) => s + i.price, 0)
       const diff = Math.abs(itemsTotal - amount)
       if (diff > 10 && diff / amount > 0.02) {
         const expectedDiff = discount > 0 ? Math.abs((itemsTotal - discount) - amount) : diff
         if (expectedDiff > 10) {
-          warning = `Сумма позиций (${itemsTotal.toFixed(2)}) не совпадает с итогом (${amount.toFixed(2)}). Проверь.`
           if (confidence === 'high') confidence = 'medium'
         }
       }
@@ -270,7 +268,6 @@ export default async function handler(req: Request): Promise<Response> {
       categoryId,
       categoryName,
       confidence,
-      warning,
     })
   } catch (e) {
     const msg = (e as Error).message
