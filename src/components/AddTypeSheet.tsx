@@ -25,10 +25,10 @@ export const AddTypeSheet: React.FC<Props> = ({ onChoose, onClose }) => {
         <div className="grid grid-cols-3 gap-2.5">
           <button
             onClick={() => { haptic.medium(); onChoose('expense') }}
-            className="py-5 bg-accent border-0 rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
-            style={{ boxShadow: '0 4px 16px rgba(var(--c-accent-glow-strong), 0.35)' }}
+            className="py-5 border-0 rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            style={{ background: '#141414', border: '0.5px solid #222' }}
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ff1744" strokeWidth="2.4" strokeLinecap="round">
               <path d="M5 12h14" />
             </svg>
             <span className="text-xs font-medium">Расход</span>
@@ -36,7 +36,8 @@ export const AddTypeSheet: React.FC<Props> = ({ onChoose, onClose }) => {
 
           <button
             onClick={() => { haptic.medium(); onChoose('income') }}
-            className="py-5 bg-bg-tertiary border border-border rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            className="py-5 border-0 rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            style={{ background: '#141414', border: '0.5px solid #222' }}
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00c864" strokeWidth="2.4" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
@@ -46,9 +47,10 @@ export const AddTypeSheet: React.FC<Props> = ({ onChoose, onClose }) => {
 
           <button
             onClick={() => { haptic.medium(); onChoose('transfer') }}
-            className="py-5 bg-bg-tertiary border border-border rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            className="py-5 border-0 rounded-2xl text-white cursor-pointer flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            style={{ background: '#141414', border: '0.5px solid #222' }}
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 10h10M13 6l4 4-4 4" />
               <path d="M17 14H7M11 18l-4-4 4-4" />
             </svg>

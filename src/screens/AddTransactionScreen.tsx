@@ -247,7 +247,9 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
                 className="cursor-pointer"
                 style={{
                   padding: '8px 13px',
-                  background: isActive ? '#ff1744' : '#141414',
+                  background: isActive
+                    ? (type === 'income' ? '#00c864' : '#ff1744')
+                    : '#141414',
                   color: isActive ? '#fff' : '#aaa',
                   fontSize: 12,
                   fontWeight: isActive ? 600 : 500,
@@ -339,11 +341,16 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         <button
           onClick={save}
           disabled={!canSave}
-          className={`w-full py-4 rounded-btn text-base font-medium cursor-pointer pointer-events-auto transition-all active:scale-[0.98] ${
-            canSave
-              ? 'bg-accent text-white border-0 shadow-[0_4px_20px_rgba(var(--c-accent-glow-strong),0.4)]'
-              : 'bg-bg-tertiary text-text-faint border-0'
-          }`}
+          className="w-full py-4 rounded-btn text-base font-medium cursor-pointer pointer-events-auto transition-all active:scale-[0.98] border-0"
+          style={{
+            background: canSave
+              ? (type === 'income' ? '#00c864' : '#ff1744')
+              : '#1f1f1f',
+            color: canSave ? '#fff' : '#555',
+            boxShadow: canSave
+              ? `0 4px 20px ${type === 'income' ? 'rgba(0,200,100,0.4)' : 'rgba(255,23,68,0.4)'}`
+              : 'none',
+          }}
         >
           {canSave ? 'Подтвердить' : 'Введи сумму'}
         </button>
