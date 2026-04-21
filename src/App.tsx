@@ -350,6 +350,7 @@ export default function App() {
           onOpenWipe={() => { setMenuOpen(false); setModal({ kind: 'wipe' }) }}
           onOpenGoals={() => { setMenuOpen(false); setModal({ kind: 'goals' }) }}
           onOpenReferral={() => { setMenuOpen(false); setModal({ kind: 'referral' }) }}
+          onOpenCurrency={() => { setMenuOpen(false); setModal({ kind: 'currency' }) }}
           onShowChangelog={() => {
             setMenuOpen(false)
             // Сбрасываем метку, чтобы при следующем открытии она снова появилась.

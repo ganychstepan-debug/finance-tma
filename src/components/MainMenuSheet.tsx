@@ -10,6 +10,7 @@ interface Props {
   onOpenWipe: () => void
   onOpenGoals: () => void
   onOpenReferral: () => void
+  onOpenCurrency: () => void
   onShowChangelog: () => void
   onShowOnboarding: () => void
 }
@@ -25,7 +26,7 @@ type Row = {
   rightText?: string    // крупный текст справа (например код валюты)
 }
 
-export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onShowChangelog, onShowOnboarding }) => {
+export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onShowChangelog, onShowOnboarding }) => {
   const state = useStore()
   const user = getUser()
   const firstName = user?.first_name ?? 'Гость'
@@ -119,7 +120,8 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
     }
   }
 
-  const rows: Row[] = [
+  // v0.34: меню структурировано по секциям под макет
+  const highlightRows: Row[] = [
     {
       id: 'referral',
       icon: '🎁',
@@ -130,7 +132,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
     },
     {
       id: 'channel',
-      icon: '📢',
+      icon: '📣',
       title: 'Канал приложения',
       subtitle: `@${APP_CHANNEL_USERNAME} · анонсы и советы`,
       onClick: () => {
@@ -140,13 +142,26 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       },
       highlight: true,
     },
+  ]
+
+  const settingsRows: Row[] = [
     {
-      id: 'whats-new',
-      icon: '✨',
-      title: 'Что нового',
-      subtitle: 'Версия v0.35',
-      onClick: () => { haptic.select(); onShowChangelog() },
+      id: 'currency',
+      icon: '💱',
+      title: 'Основная валюта',
+      onClick: () => { haptic.select(); onOpenCurrency() },
+      rightText: state.settings.baseCurrency,
     },
+    {
+      id: 'goals',
+      icon: '🎯',
+      title: 'Цели накопления',
+      onClick: () => { haptic.select(); onOpenGoals() },
+      rightText: String((state.goals ?? []).filter((g) => !g.archived).length || ''),
+    },
+  ]
+
+  const dataRows: Row[] = [
     {
       id: 'restore',
       icon: '☁️',
@@ -168,20 +183,22 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       subtitle: `${state.transactions.length} операций`,
       onClick: handleExportAll,
     },
+  ]
+
+  const aboutRows: Row[] = [
+    {
+      id: 'whats-new',
+      icon: '✨',
+      title: 'Что нового',
+      subtitle: 'Версия v0.36',
+      onClick: () => { haptic.select(); onShowChangelog() },
+    },
     {
       id: 'onboarding',
       icon: '💡',
       title: 'Подсказки заново',
-      subtitle: 'Показать онбординг с начала',
+      subtitle: 'Показать онбординг',
       onClick: () => { haptic.select(); onShowOnboarding() },
-    },
-    {
-      id: 'wipe',
-      icon: '🗑',
-      title: 'Удалить данные',
-      subtitle: 'За период или полностью',
-      onClick: () => { haptic.warning(); onOpenWipe() },
-      danger: true,
     },
   ]
 
@@ -256,88 +273,132 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
           />
         </div>
 
-        {/* Пункты меню */}
-        <div className="space-y-1">
-          {rows.map((r) => {
+        {/* Highlight-кнопки: Пригласить + Канал */}
+        <div className="space-y-2 mb-4">
+          {highlightRows.map((r) => {
             const isReferral = r.id === 'referral'
-            const isChannel = r.id === 'channel'
-            const highlightStyle = r.highlight
-              ? isReferral
-                ? { background: 'rgba(var(--c-success), 0.13)' }
-                : { background: 'rgba(var(--c-accent), 0.13)' }
-              : undefined
-            const highlightBorder = r.highlight
-              ? isReferral
-                ? 'border border-success/70 text-white'
-                : 'border border-accent/70 text-white'
-              : 'border-0 bg-bg-tertiary text-white'
-            const subtitleColor = r.highlight
-              ? isReferral
-                ? 'text-success'
-                : 'text-accent'
-              : 'text-text-muted'
-            const chevronColor = r.highlight
-              ? isReferral
-                ? 'text-success'
-                : 'text-accent'
-              : 'text-text-muted'
+            const bg = isReferral ? 'rgba(0,200,100,0.1)' : 'rgba(255,23,68,0.1)'
+            const border = isReferral ? '0.5px solid rgba(0,200,100,0.4)' : '0.5px solid rgba(255,23,68,0.4)'
+            const shadow = isReferral
+              ? '0 0 14px rgba(0,200,100,0.45)'
+              : '0 0 18px rgba(255,23,68,0.7)'
+            const subColor = isReferral ? '#4ae290' : '#ff6188'
+            const iconBg = isReferral ? 'rgba(0,200,100,0.18)' : 'rgba(255,23,68,0.18)'
+            const iconBorder = isReferral ? '1px solid rgba(0,200,100,0.55)' : '1px solid rgba(255,23,68,0.55)'
+            const iconShadow = isReferral
+              ? '0 0 12px rgba(0,200,100,0.5)'
+              : '0 0 14px rgba(255,23,68,0.7)'
             return (
-            <button
-              key={r.id}
-              onClick={r.onClick}
-              className={`w-full flex items-center gap-3 p-3 rounded-btn cursor-pointer text-left active:scale-[0.98] transition-transform ${highlightBorder} ${r.danger ? 'text-accent' : ''}`}
-              style={highlightStyle}
-            >
-              {isChannel ? (
+              <button
+                key={r.id}
+                onClick={r.onClick}
+                className="w-full flex items-center cursor-pointer text-left active:scale-[0.98] transition-transform"
+                style={{
+                  padding: '11px 13px',
+                  background: bg,
+                  border,
+                  borderRadius: 12,
+                  gap: 11,
+                  boxShadow: shadow,
+                  animation: isReferral ? undefined : 'pulse-glow 2.5s ease-in-out infinite',
+                }}
+              >
                 <div
-                  className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
+                  className="flex items-center justify-center shrink-0"
                   style={{
-                    backgroundColor: 'rgba(var(--c-accent), 0.18)',
-                    border: '1px solid rgba(var(--c-accent), 0.55)',
-                    boxShadow: '0 0 18px rgba(var(--c-accent-glow-strong), 0.7), 0 0 28px rgba(var(--c-accent-glow-strong), 0.35)',
-                    animation: 'pulse-glow 2.4s ease-in-out infinite',
+                    width: 38, height: 38, borderRadius: 10,
+                    background: iconBg, border: iconBorder,
+                    boxShadow: iconShadow, fontSize: 17,
                   }}
                 >
-                  <span className="text-lg">{r.icon}</span>
+                  {r.icon}
                 </div>
-              ) : isReferral ? (
-                <div
-                  className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor: 'rgba(var(--c-success), 0.18)',
-                    border: '1px solid rgba(var(--c-success), 0.55)',
-                    boxShadow: '0 0 16px rgba(0, 200, 100, 0.55), 0 0 24px rgba(0, 200, 100, 0.3)',
-                    animation: 'pulse-glow-green 2.4s ease-in-out infinite',
-                  }}
-                >
-                  <span className="text-lg">{r.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{r.title}</div>
+                  <div style={{ color: subColor, fontSize: 10, marginTop: 1 }}>{r.subtitle}</div>
                 </div>
-              ) : (
-                <div className="text-xl w-6 text-center">{r.icon}</div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{r.title}</div>
-                {r.subtitle && (
-                  <div className={`text-xs mt-0.5 ${subtitleColor}`}>
-                    {r.subtitle}
-                  </div>
-                )}
-              </div>
-              {r.rightText && (
-                <div className="text-sm font-medium text-accent shrink-0 mr-2">
-                  {r.rightText}
-                </div>
-              )}
-              <div className={`text-xs ${chevronColor}`}>›</div>
-            </button>
+                <span style={{ color: '#555', fontSize: 14 }}>›</span>
+              </button>
             )
           })}
         </div>
 
-        <div className="mt-5 text-center text-2xs text-text-muted">
-          Finance · v0.28 Beta
+        <MenuSection label="НАСТРОЙКИ" rows={settingsRows} />
+        <MenuSection label="ДАННЫЕ" rows={dataRows} />
+        <MenuSection label="О ПРИЛОЖЕНИИ" rows={aboutRows} />
+
+        {/* Стереть все данные */}
+        <button
+          onClick={() => { haptic.warning(); onOpenWipe() }}
+          className="w-full cursor-pointer active:scale-[0.98] transition-transform"
+          style={{
+            padding: 11,
+            background: 'transparent',
+            border: '0.5px solid rgba(255,23,68,0.3)',
+            borderRadius: 12,
+            color: '#ff1744',
+            fontSize: 12,
+            fontWeight: 500,
+            marginBottom: 12,
+          }}
+        >
+          🗑 Стереть все данные
+        </button>
+
+        <div className="text-center" style={{ color: '#444', fontSize: 10 }}>
+          Сохранёнки · v0.35 beta
         </div>
       </div>
     </div>
   )
 }
+
+const MenuSection: React.FC<{ label: string; rows: Row[] }> = ({ label, rows }) => (
+  <>
+    <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500, marginBottom: 6, paddingLeft: 2 }}>
+      {label}
+    </div>
+    <div
+      style={{
+        background: '#141414',
+        border: '0.5px solid #222',
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginBottom: 14,
+      }}
+    >
+      {rows.map((r, i) => (
+        <button
+          key={r.id}
+          onClick={r.onClick}
+          className="w-full flex items-center cursor-pointer text-left active:scale-[0.98] transition-transform"
+          style={{
+            padding: '11px 13px',
+            background: 'transparent',
+            border: 0,
+            gap: 10,
+            borderBottom: i < rows.length - 1 ? '0.5px solid #1a1a1a' : undefined,
+          }}
+        >
+          <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{r.icon}</span>
+          <div className="flex-1 text-left">
+            <div style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>{r.title}</div>
+            {r.subtitle && (
+              <div style={{ color: '#666', fontSize: 10 }}>{r.subtitle}</div>
+            )}
+          </div>
+          {r.rightText && (
+            <span style={{
+              color: r.id === 'currency' ? '#ff1744' : '#888',
+              fontSize: 12,
+              fontWeight: r.id === 'currency' ? 500 : 400,
+            }}>
+              {r.rightText}
+            </span>
+          )}
+          <span style={{ color: '#555', fontSize: 12, marginLeft: 6 }}>›</span>
+        </button>
+      ))}
+    </div>
+  </>
+)
