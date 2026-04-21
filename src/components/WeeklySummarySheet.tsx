@@ -79,20 +79,29 @@ export const WeeklySummarySheet: React.FC<Props> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-end">
-      <div className="w-full bg-bg rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto animate-slideUp">
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-xs text-text-muted">📊 Итоги недели</div>
+    <div className="fixed inset-0 z-[200] flex items-end" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
+      <div
+        className="w-full max-h-[85vh] overflow-y-auto animate-slideUp"
+        style={{
+          background: '#0f0f0f',
+          borderRadius: '24px 24px 0 0',
+          padding: '18px 18px 32px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
+        }}
+      >
+        <div className="flex justify-between items-center mb-3.5">
+          <div style={{ color: '#888', fontSize: 11 }}>📊 Итоги недели</div>
           <button
             onClick={handleClose}
-            className="text-xs text-text-muted bg-transparent border-0 cursor-pointer"
+            className="bg-transparent border-0 cursor-pointer"
+            style={{ color: '#666', fontSize: 11 }}
           >
             Закрыть
           </button>
         </div>
 
-        <div className="text-center mb-6">
-          <div className="text-2xs text-text-faint uppercase tracking-wide">
+        <div className="text-center mb-5">
+          <div style={{ color: '#555', fontSize: 10, letterSpacing: '1.3px', fontWeight: 500, textTransform: 'uppercase' }}>
             {formatDateShort(stats.weekStart)} — {formatDateShort(stats.weekEnd)}
           </div>
         </div>
@@ -100,35 +109,46 @@ export const WeeklySummarySheet: React.FC<Props> = ({ onClose }) => {
         {!stats.hasData ? (
           <div className="py-10 text-center">
             <div className="text-4xl mb-3">💤</div>
-            <div className="text-sm text-text-muted">Нет записей за прошлую неделю</div>
-            <div className="text-xs text-text-faint mt-1">Начни записывать траты — сводка появится в следующий раз</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Нет записей за прошлую неделю</div>
+            <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>Начни записывать траты — сводка появится в следующий раз</div>
           </div>
         ) : (
           <>
-            {/* Расходы и доходы */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="p-3 bg-bg-secondary rounded-btn text-center">
-                <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1">Потрачено</div>
-                <div className="text-lg font-medium text-accent">
-                  {formatMoney(stats.expenses, baseCurrency)}
+            {/* Расходы и доходы — две плашки */}
+            <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+              <div style={{ padding: 14, background: '#141414', borderRadius: 12, textAlign: 'center' }}>
+                <div style={{ color: '#666', fontSize: 9, letterSpacing: '1.3px', fontWeight: 500, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Потрачено
+                </div>
+                <div style={{ color: '#ff1744', fontSize: 19, fontWeight: 500 }}>
+                  −{formatMoney(stats.expenses, baseCurrency)}
                 </div>
               </div>
-              <div className="p-3 bg-bg-secondary rounded-btn text-center">
-                <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1">Доходы</div>
-                <div className="text-lg font-medium text-success">
-                  {formatMoney(stats.income, baseCurrency)}
+              <div style={{ padding: 14, background: '#141414', borderRadius: 12, textAlign: 'center' }}>
+                <div style={{ color: '#666', fontSize: 9, letterSpacing: '1.3px', fontWeight: 500, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Доходы
+                </div>
+                <div style={{ color: '#00c864', fontSize: 19, fontWeight: 500 }}>
+                  +{formatMoney(stats.income, baseCurrency)}
                 </div>
               </div>
             </div>
 
             {/* Баланс */}
-            <div className={`p-3 rounded-btn text-center mb-6 ${
-              stats.net >= 0 ? 'bg-success/10 border border-success/30' : 'bg-accent/10 border border-accent/30'
-            }`}>
-              <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1">
+            <div
+              style={{
+                padding: 14,
+                background: stats.net >= 0 ? 'rgba(0,200,100,0.08)' : 'rgba(255,23,68,0.08)',
+                border: `0.5px solid ${stats.net >= 0 ? 'rgba(0,200,100,0.3)' : 'rgba(255,23,68,0.3)'}`,
+                borderRadius: 12,
+                textAlign: 'center',
+                marginBottom: 22,
+              }}
+            >
+              <div style={{ color: '#666', fontSize: 9, letterSpacing: '1.3px', fontWeight: 500, textTransform: 'uppercase', marginBottom: 4 }}>
                 Итог недели
               </div>
-              <div className={`text-xl font-medium ${stats.net >= 0 ? 'text-success' : 'text-accent'}`}>
+              <div style={{ color: stats.net >= 0 ? '#00c864' : '#ff1744', fontSize: 24, fontWeight: 500 }}>
                 {stats.net >= 0 ? '▲' : '▼'} {formatMoney(Math.abs(stats.net), baseCurrency)}
               </div>
             </div>
@@ -136,20 +156,46 @@ export const WeeklySummarySheet: React.FC<Props> = ({ onClose }) => {
             {/* Топ категории */}
             {stats.topCategories.length > 0 && (
               <div>
-                <div className="text-[10px] text-text-muted uppercase tracking-wide mb-2 pl-1">
+                <div
+                  style={{
+                    color: '#666', fontSize: 10, letterSpacing: '1.3px', fontWeight: 500,
+                    textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4,
+                  }}
+                >
                   Куда уходили деньги
                 </div>
-                <div className="space-y-2">
-                  {stats.topCategories.map(({ cat, amount }, i) => (
-                    <div key={cat!.id} className="flex items-center gap-3 p-2.5 bg-bg-secondary rounded-btn">
-                      <div className="text-lg text-text-muted w-4 text-center">{i + 1}</div>
-                      <CategoryIcon iconId={cat!.icon} size="sm" />
-                      <div className="flex-1 text-sm text-white">{cat!.name}</div>
-                      <div className="text-sm text-accent font-medium">
-                        {formatMoney(amount, baseCurrency)}
+                <div className="flex flex-col" style={{ gap: 6, marginBottom: 18 }}>
+                  {stats.topCategories.map(({ cat, amount }, i) => {
+                    const isEmojiString = /\p{Extended_Pictographic}/u.test(cat!.icon)
+                    return (
+                      <div
+                        key={cat!.id}
+                        className="flex items-center"
+                        style={{ gap: 10, padding: 10, background: '#141414', borderRadius: 11 }}
+                      >
+                        <div style={{ color: '#555', fontSize: 14, width: 14, textAlign: 'center' }}>
+                          {i + 1}
+                        </div>
+                        <div
+                          className="flex items-center justify-center"
+                          style={{
+                            width: 32, height: 32,
+                            background: 'rgba(255,23,68,0.12)',
+                            borderRadius: 9,
+                            fontSize: 16,
+                          }}
+                        >
+                          {isEmojiString ? cat!.icon : <CategoryIcon iconId={cat!.icon} size="sm" />}
+                        </div>
+                        <div className="flex-1" style={{ color: '#fff', fontSize: 13 }}>
+                          {cat!.name}
+                        </div>
+                        <div style={{ color: '#ff1744', fontSize: 13, fontWeight: 500 }}>
+                          −{formatMoney(amount, baseCurrency)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -158,7 +204,16 @@ export const WeeklySummarySheet: React.FC<Props> = ({ onClose }) => {
 
         <button
           onClick={handleClose}
-          className="w-full mt-6 py-3 bg-accent text-white rounded-btn text-sm font-medium cursor-pointer border-0"
+          className="w-full cursor-pointer border-0 active:scale-[0.98] transition-transform"
+          style={{
+            padding: 14,
+            background: '#ff1744',
+            borderRadius: 14,
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: '0 4px 16px rgba(255,23,68,0.45)',
+          }}
         >
           Продолжить
         </button>
