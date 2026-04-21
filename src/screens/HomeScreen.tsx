@@ -78,7 +78,7 @@ export const HomeScreen: React.FC<Props> = ({
   const totalStr = Math.round(total).toLocaleString('ru-RU')
 
   return (
-    <div className="flex flex-col overflow-y-auto pb-4">
+    <div className="h-full flex flex-col overflow-y-auto pb-4">
       <HomeHeader month={month} onMonthChange={setMonth} onMenuOpen={onMenuOpen} onOpenCurrency={onOpenCurrency} />
 
       <div className="px-5 pt-3 pb-0" style={{ marginBottom: 10 }}>
