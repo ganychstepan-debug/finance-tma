@@ -12,6 +12,7 @@ interface Props {
   onOpenCurrency: () => void
   onOpenRates: () => void
   onOpenExport: () => void
+  onOpenImport: () => void
   onShowChangelog: () => void
   onShowOnboarding: () => void
 }
@@ -27,7 +28,7 @@ type Row = {
   rightText?: string    // крупный текст справа (например код валюты)
 }
 
-export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onOpenExport, onShowChangelog, onShowOnboarding }) => {
+export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onOpenExport, onOpenImport, onShowChangelog, onShowOnboarding }) => {
   const state = useStore()
   const user = getUser()
   const firstName = user?.first_name ?? 'Гость'
@@ -155,6 +156,13 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       subtitle: `${state.transactions.length.toLocaleString('ru-RU')} операций`,
       onClick: () => { haptic.select(); onClose(); onOpenExport() },
     },
+    {
+      id: 'import',
+      icon: '📥',
+      title: 'Импорт из CSV',
+      subtitle: 'Загрузить операции из файла',
+      onClick: () => { haptic.select(); onClose(); onOpenImport() },
+    },
   ]
 
   const aboutRows: Row[] = [
@@ -162,7 +170,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.72',
+      subtitle: 'Версия v0.74',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {

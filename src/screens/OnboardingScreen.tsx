@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { haptic, openLink } from '@/lib/telegram'
+import { haptic, openLink, openTelegramLink } from '@/lib/telegram'
+import { APP_CHANNEL_USERNAME, APP_CHANNEL_URL } from '@/lib/version'
 
 interface Props {
   onDone: () => void
@@ -10,7 +11,7 @@ interface Slide {
   text: string
   emoji: string
   hint?: string
-  kind?: 'home-screen'
+  kind?: 'home-screen' | 'quickstart' | 'channel'
 }
 
 const SLIDES: Slide[] = [
@@ -18,6 +19,12 @@ const SLIDES: Slide[] = [
     emoji: '💳',
     title: 'Сохранёнки',
     text: 'Учёт финансов прямо в Telegram. Счета, цели, статистика и экспорт в CSV — без регистрации и лишних приложений.',
+  },
+  {
+    emoji: '🚀',
+    title: 'С чего начать',
+    text: '',
+    kind: 'quickstart',
   },
   {
     emoji: '💬',
@@ -36,6 +43,12 @@ const SLIDES: Slide[] = [
     title: 'Цели и валюты',
     text: 'Создавай цели накопления со своим прогрессом. Работай в любой основной валюте — курсы ЦБ обновляются каждый день.',
     hint: 'Меню → Основная валюта',
+  },
+  {
+    emoji: '📢',
+    title: 'Канал приложения',
+    text: 'В @savemoney_app — рассказываем об обновлениях, фичах и собираем обратную связь. Подписывайся чтобы не пропустить.',
+    kind: 'channel',
   },
   {
     emoji: '☁️',
@@ -128,12 +141,61 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
           {slide.title}
         </div>
 
-        <div style={{
-          color: '#aaa', fontSize: 13, lineHeight: 1.55,
-          maxWidth: 280, marginBottom: 20,
-        }}>
-          {slide.text}
-        </div>
+        {slide.text && (
+          <div style={{
+            color: '#aaa', fontSize: 13, lineHeight: 1.55,
+            maxWidth: 280, marginBottom: 20,
+          }}>
+            {slide.text}
+          </div>
+        )}
+
+        {/* v0.74: чек-лист первых шагов */}
+        {slide.kind === 'quickstart' && (
+          <div style={{ width: '100%', maxWidth: 300, marginTop: 4 }}>
+            {[
+              { n: 1, label: 'Добавь свой первый счёт', hint: 'Главная → + в блоке «Счета»' },
+              { n: 2, label: 'Запиши первую операцию', hint: 'Напиши боту или нажми +' },
+              { n: 3, label: 'Поставь цель (опц.)', hint: 'Главная → + в блоке «Цели»' },
+            ].map((step, i, arr) => (
+              <div
+                key={step.n}
+                className="flex items-center"
+                style={{
+                  padding: '12px 14px',
+                  background: '#141414',
+                  border: '0.5px solid #222',
+                  borderRadius: 12,
+                  marginBottom: i < arr.length - 1 ? 6 : 0,
+                  gap: 12,
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: 28, height: 28,
+                    borderRadius: '50%',
+                    background: 'rgba(255,23,68,0.12)',
+                    border: '0.5px solid rgba(255,23,68,0.4)',
+                    color: '#ff1744',
+                    fontSize: 13, fontWeight: 600,
+                  }}
+                >
+                  {step.n}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#fff', fontSize: 13, fontWeight: 500, marginBottom: 1 }}>
+                    {step.label}
+                  </div>
+                  <div style={{ color: '#666', fontSize: 10 }}>
+                    {step.hint}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {slide.hint && (
           <div style={{
@@ -147,6 +209,29 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
           }}>
             {slide.hint}
           </div>
+        )}
+
+        {/* v0.74: кнопка открытия канала */}
+        {slide.kind === 'channel' && (
+          <button
+            onClick={() => { haptic.medium(); openTelegramLink(APP_CHANNEL_URL) }}
+            className="cursor-pointer flex items-center justify-center"
+            style={{
+              marginTop: 8,
+              padding: '12px 22px',
+              background: 'linear-gradient(135deg, #ff1744, #8a001c)',
+              border: 0,
+              borderRadius: 12,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 0 24px rgba(255,23,68,0.4), 0 4px 14px rgba(255,23,68,0.3)',
+              gap: 8,
+            }}
+          >
+            <span>📢</span>
+            <span>Открыть @{APP_CHANNEL_USERNAME}</span>
+          </button>
         )}
 
         {slide.kind === 'home-screen' && (
