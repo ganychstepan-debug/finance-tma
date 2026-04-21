@@ -115,10 +115,15 @@ export const scanReceipt = async (
     const data = await res.json().catch(() => ({}))
     if (data.blocked) throw new Error('запрещённое содержимое')
     if (data.fallback) throw new Error(data.error || 'Не удалось распознать чек')
-    throw new Error(data.error || `Ошибка ${res.status}`)
+    throw new Error(data.error || `Ошибка сервера ${res.status}`)
   }
 
-  const data = await res.json()
+  let data: any
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Сервер вернул некорректный ответ')
+  }
   return {
     amount: Number(data.amount) || 0,
     merchant: String(data.merchant || ''),

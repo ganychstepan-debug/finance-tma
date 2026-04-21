@@ -85,11 +85,25 @@ export default function App() {
   useEffect(() => {
     if (onboarding || changelog) return
     let cancelled = false
-    fetchPendingTxs().then((items) => {
-      if (cancelled) return
-      if (items.length > 0) setBotPendingOpen(true)
-    })
-    return () => { cancelled = true }
+    const check = () => {
+      fetchPendingTxs().then((items) => {
+        if (cancelled) return
+        if (items.length > 0) setBotPendingOpen(true)
+      })
+    }
+    check()
+    // v0.58: повторный чек когда юзер возвращается в приложение (tab focus)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', check)
+    // Периодический poll раз в 15 секунд
+    const interval = setInterval(check, 15000)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', check)
+      clearInterval(interval)
+    }
   }, [onboarding, changelog])
 
   // Достижение цели — ищем цель которая достигла 100% и ещё не была показана

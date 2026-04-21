@@ -18,7 +18,7 @@ import {
 
 export const config = { runtime: 'edge' }
 
-const GEMINI_VISION_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_VISION_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 interface ReceiptCategory {
   id: string
