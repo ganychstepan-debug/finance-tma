@@ -45,9 +45,9 @@ export const ChannelPromptScreen: React.FC<Props> = ({ onDone }) => {
           <div
             className="w-32 h-32 rounded-full flex items-center justify-center text-6xl"
             style={{
-              background: 'linear-gradient(135deg, #ff0033, #8a001c)',
-              boxShadow: '0 0 60px rgba(var(--c-accent-glow-strong),0.5), 0 0 100px rgba(var(--c-accent-glow-strong),0.25)',
-              animation: 'pulse-glow-bounce 2.8s ease-in-out infinite',
+              background: 'linear-gradient(135deg, #ff1744, #8a001c)',
+              boxShadow: '0 0 60px rgba(255,23,68,0.55), 0 0 100px rgba(255,23,68,0.3)',
+              animation: 'pulse-glow 2.8s ease-in-out infinite',
             }}
           >
             📢

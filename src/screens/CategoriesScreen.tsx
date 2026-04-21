@@ -208,9 +208,15 @@ const CategoryGridItem: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`aspect-square rounded-btn flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform relative overflow-hidden border-0 ${
-        isOver ? 'goal-pulse-neon bg-bg-secondary' : 'bg-bg-secondary'
-      }`}
+      className="aspect-square rounded-btn flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform relative overflow-hidden"
+      style={{
+        background: '#141414',
+        border: isOver ? '2px solid #ff1744' : '0',
+        boxShadow: isOver
+          ? '0 0 20px rgba(255,23,68,0.6), 0 0 40px rgba(255,23,68,0.25), inset 0 0 18px rgba(255,23,68,0.35)'
+          : undefined,
+        animation: isOver ? 'overbudget-pulse 2s ease-in-out infinite' : undefined,
+      }}
     >
       {/* Слой заливки — только если есть бюджет */}
       {hasBudget && fillHeight > 0 && (
@@ -219,10 +225,21 @@ const CategoryGridItem: React.FC<{
           style={{
             height: `${fillHeight}%`,
             background: isOver
-              ? 'linear-gradient(to top, rgba(255,0,51,0.55), rgba(255,0,51,0.25))'
+              ? 'linear-gradient(to top, rgba(255,23,68,0.85), rgba(255,23,68,0.45))'
               : rawPercent > 70
-              ? 'linear-gradient(to top, rgba(255,0,51,0.45), rgba(255,0,51,0.12))'
-              : 'linear-gradient(to top, rgba(255,0,51,0.28), rgba(255,0,51,0.05))',
+              ? 'linear-gradient(to top, rgba(255,23,68,0.45), rgba(255,23,68,0.12))'
+              : 'linear-gradient(to top, rgba(255,23,68,0.28), rgba(255,23,68,0.05))',
+          }}
+        />
+      )}
+
+      {/* v0.34: диагональные полосы при перерасходе */}
+      {isOver && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255,23,68,0.2) 6px 12px)',
+            opacity: 0.7,
           }}
         />
       )}
@@ -230,7 +247,9 @@ const CategoryGridItem: React.FC<{
       {/* Контент поверх заливки */}
       <div className="relative z-10 flex flex-col items-center justify-center gap-1">
         <CategoryIcon iconId={category.icon} size="sm" variant={category.type === 'income' ? 'income' : 'expense'} />
-        <span className="text-[11px] font-medium text-white text-center px-1 leading-tight truncate max-w-full">{category.name}</span>
+        <span className="text-[11px] font-medium text-white text-center px-1 leading-tight truncate max-w-full" style={{ textShadow: isOver ? '0 1px 2px rgba(0,0,0,0.5)' : undefined }}>
+          {category.name}
+        </span>
       </div>
 
       {hasBudget && (
@@ -241,8 +260,8 @@ const CategoryGridItem: React.FC<{
               : rawPercent > 70 ? 'text-accent' : 'text-text-muted'
           }`}
           style={isOver ? {
-            background: 'rgb(var(--c-accent-glow-strong))',
-            boxShadow: '0 0 6px rgb(var(--c-accent-glow-strong))',
+            background: '#ff1744',
+            boxShadow: '0 0 6px #ff1744',
           } : undefined}
         >
           {percent}%
@@ -268,9 +287,15 @@ const CategoryRow: React.FC<{
   return (
     <div
       onClick={onClick}
-      className={`relative p-3.5 bg-bg-secondary rounded-card cursor-pointer overflow-hidden ${
-        isOver ? 'goal-pulse-neon' : 'border border-border'
-      }`}
+      className="relative p-3.5 rounded-card cursor-pointer overflow-hidden"
+      style={{
+        background: '#141414',
+        border: isOver ? '2px solid #ff1744' : '0.5px solid #222',
+        boxShadow: isOver
+          ? '0 0 16px rgba(255,23,68,0.5), 0 0 32px rgba(255,23,68,0.2), inset 0 0 14px rgba(255,23,68,0.2)'
+          : undefined,
+        animation: isOver ? 'overbudget-pulse 2s ease-in-out infinite' : undefined,
+      }}
     >
       {/* Заливка слева-направо по проценту бюджета */}
       {hasBudget && fillWidth > 0 && (
@@ -279,10 +304,21 @@ const CategoryRow: React.FC<{
           style={{
             width: `${fillWidth}%`,
             background: isOver
-              ? 'linear-gradient(to right, rgba(255,0,51,0.35), rgba(255,0,51,0.15))'
+              ? 'linear-gradient(to right, rgba(255,23,68,0.35), rgba(255,23,68,0.15))'
               : rawPercent > 70
-              ? 'linear-gradient(to right, rgba(255,0,51,0.25), rgba(255,0,51,0.08))'
-              : 'linear-gradient(to right, rgba(255,0,51,0.15), rgba(255,0,51,0.03))',
+              ? 'linear-gradient(to right, rgba(255,23,68,0.25), rgba(255,23,68,0.08))'
+              : 'linear-gradient(to right, rgba(255,23,68,0.15), rgba(255,23,68,0.03))',
+          }}
+        />
+      )}
+
+      {/* v0.34: диагональные полосы при перерасходе */}
+      {isOver && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255,23,68,0.15) 6px 12px)',
+            opacity: 0.5,
           }}
         />
       )}
@@ -306,7 +342,18 @@ const CategoryRow: React.FC<{
               : `${formatMoney(spent, 'RUB')} · без бюджета`}
           </div>
         </div>
-        <div className={`text-xs font-medium shrink-0 ml-2 ${isOver || rawPercent > 70 ? 'text-accent' : 'text-text-muted'}`}>
+        <div
+          className={`text-xs font-bold shrink-0 ml-2 ${
+            isOver
+              ? 'text-white px-1.5 py-0.5 rounded'
+              : rawPercent > 70 ? 'text-accent' : 'text-text-muted font-medium'
+          }`}
+          style={isOver ? {
+            background: '#ff1744',
+            boxShadow: '0 0 6px #ff1744',
+            fontSize: 10,
+          } : undefined}
+        >
           {hasBudget ? `${percent}%` : spent > 0 ? '—' : ''}
         </div>
       </div>
