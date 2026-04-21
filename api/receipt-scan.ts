@@ -4,7 +4,7 @@
  * Принимает JSON: { imageBase64: "iVBORw0K...", categories: [{id, name}] }
  * Возвращает: { amount, merchant, date, categoryGuess, categoryId? }
  *
- * Gemini Vision читает фото чека, извлекает сумму, магазин, дату.
+ * OpenAI Vision (gpt-4o-mini) читает фото чека, извлекает сумму, магазин, дату.
  * Пытается угадать категорию из предоставленного списка.
  */
 
@@ -17,8 +17,6 @@ import {
 } from './_shared'
 
 export const config = { runtime: 'edge' }
-
-const GEMINI_VISION_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 interface ReceiptCategory {
   id: string
@@ -49,45 +47,54 @@ const buildPrompt = (categories: ReceiptCategory[]): string => {
 ${catList}`
 }
 
-const callGeminiVision = async (prompt: string, imageBase64: string): Promise<string> => {
-  const apiKey = (globalThis as any).process?.env?.GEMINI_API_KEY
-    ?? (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined)
+const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+
+const callOpenAiVision = async (prompt: string, imageBase64: string): Promise<string> => {
+  const apiKey = (globalThis as any).process?.env?.OPENAI_API_KEY
+    ?? (typeof process !== 'undefined' ? process.env?.OPENAI_API_KEY : undefined)
 
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY не настроен')
+    throw new Error('OPENAI_API_KEY не настроен')
   }
 
   const mimeType = imageBase64.startsWith('/9j/') ? 'image/jpeg'
     : imageBase64.startsWith('iVBOR') ? 'image/png'
     : 'image/jpeg'
 
-  const res = await fetch(`${GEMINI_VISION_ENDPOINT}?key=${apiKey}`, {
+  const dataUrl = `data:${mimeType};base64,${imageBase64}`
+
+  const res = await fetch(OPENAI_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: imageBase64 } },
-        ],
-      }],
-      generationConfig: {
-        maxOutputTokens: 300,
-        temperature: 0.2,
-        responseMimeType: 'application/json',
-      },
+      model: 'gpt-4o-mini',
+      max_tokens: 400,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } },
+          ],
+        },
+      ],
     }),
   })
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`Gemini Vision ${res.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`OpenAI Vision ${res.status}: ${errText.slice(0, 200)}`)
   }
 
   const data = await res.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  const text = data?.choices?.[0]?.message?.content
   if (typeof text !== 'string') {
-    throw new Error('Gemini вернул неожиданный формат')
+    throw new Error('OpenAI вернул неожиданный формат')
   }
   return text.trim()
 }
@@ -129,7 +136,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const prompt = buildPrompt(categories)
-    const response = await callGeminiVision(prompt, imageBase64)
+    const response = await callOpenAiVision(prompt, imageBase64)
 
     // Gemini иногда оборачивает JSON в ```json ... ``` даже при responseMimeType.
     const cleaned = response
@@ -142,7 +149,7 @@ export default async function handler(req: Request): Promise<Response> {
     try {
       parsed = JSON.parse(cleaned)
     } catch {
-      console.error('Receipt scan: bad JSON from Gemini:', response.slice(0, 300))
+      console.error('Receipt scan: bad JSON from OpenAI:', response.slice(0, 300))
       return json({ error: 'Не удалось распознать чек, попробуй переснять' }, 502)
     }
 

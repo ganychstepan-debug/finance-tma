@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 64   // = v0.58 — polling pending, Gemini 2.0 Flash для чеков
+export const APP_VERSION = 65   // = v0.59 — receipt-scan на OpenAI Vision (у нас только OpenAI ключ)
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================
