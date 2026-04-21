@@ -143,9 +143,12 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
       const d = new Date(splitDialog.date)
       return isNaN(d.getTime()) ? txDate : d
     })()
+    const fallbackCategoryId = visibleCategories[0]?.id
     for (const g of splitDialog.byCategory) {
-      if (!g.categoryId) continue
       if (g.total <= 0) continue
+      // v0.89: если модель не подобрала категорию — fallback на первую расходную
+      const catId = g.categoryId || fallbackCategoryId
+      if (!catId) continue
       // v0.88: комментарий для каждой разбитой операции — товары той же категории
       const itemsInCat = splitDialog.items
         .filter((it) => it.categoryName === g.categoryName)
@@ -157,7 +160,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         amount: g.total,
         currency: account?.currency ?? 'RUB',
         accountId,
-        categoryId: g.categoryId,
+        categoryId: catId,
         date: baseDate.toISOString(),
         comment: itemsInCat || splitDialog.merchant || undefined,
       })
@@ -840,16 +843,14 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
               </button>
               <button
                 onClick={applySplit}
-                disabled={!splitDialog.byCategory.some((g) => g.categoryId)}
                 style={{
                   flex: 1, padding: 14,
                   background: '#ff1744', border: 0, borderRadius: 14,
                   color: '#fff', fontSize: 13, fontWeight: 600,
                   cursor: 'pointer',
-                  opacity: splitDialog.byCategory.some((g) => g.categoryId) ? 1 : 0.5,
                 }}
               >
-                Разбить ({splitDialog.byCategory.filter((g) => g.categoryId).length})
+                Разбить ({splitDialog.byCategory.length})
               </button>
             </div>
           </div>

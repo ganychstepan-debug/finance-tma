@@ -228,6 +228,19 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Группировка по категориям
+    // v0.89: fuzzy matching — точное совпадение → частичное → первая по типу расход
+    const fuzzyMatch = (guess: string): ReceiptCategory | undefined => {
+      const needle = guess.toLowerCase().trim()
+      if (!needle) return undefined
+      let m = categories.find((c) => c.name.toLowerCase() === needle)
+      if (m) return m
+      m = categories.find((c) => {
+        const n = c.name.toLowerCase()
+        return n.includes(needle) || needle.includes(n)
+      })
+      return m
+    }
+
     const byCatMap = new Map<string, number>()
     for (const it of items) {
       const key = it.categoryName || 'Другое'
@@ -235,9 +248,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
     const byCategory = Array.from(byCatMap.entries())
       .map(([categoryName, total]) => {
-        const matched = categories.find(
-          (c) => c.name.toLowerCase() === categoryName.toLowerCase()
-        )
+        const matched = fuzzyMatch(categoryName) ?? categories[0]
         return {
           categoryName: matched?.name || categoryName,
           categoryId: matched?.id,

@@ -10,8 +10,9 @@ import { convert } from '@/lib/fx'
 // Дефолтные данные — создаются при первом запуске
 // ============================================================================
 
+let __uidCounter = 0
 const uid = (): UUID =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  `${Date.now().toString(36)}-${(__uidCounter++).toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 
 const now = (): string => new Date().toISOString()
 
