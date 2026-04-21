@@ -31,7 +31,6 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
   // Валюты: встроенные + пользовательские
   const availableCurrencies: Currency[] = [...BUILTIN_CURRENCIES, ...settings.customCurrencies]
   const customBanks = settings.customBanks ?? []
-  const allBanks = [...BANKS.filter((b) => b.id !== 'other'), ...customBanks, BANKS.find((b) => b.id === 'other')!]
 
   const [name, setName]       = useState(existing?.name ?? '')
   const [type, setType]       = useState<AccountType>(existing?.type ?? 'card')
@@ -155,49 +154,159 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
 
         {type === 'card' && (
           <div>
-            <label className="text-2xs text-text-muted uppercase tracking-wide block mb-2">Банк</label>
-            <div className="grid grid-cols-5 gap-2">
-              {allBanks.map((b) => {
-                const isCustom = b.id.startsWith('custom_')
+            <label className="text-2xs uppercase block mb-2" style={{ color: '#666', letterSpacing: '1.3px', fontWeight: 500 }}>
+              Банк
+            </label>
+
+            {/* v0.34: Популярные — сетка 4xN с иконками 48px */}
+            <div className="text-2xs uppercase mb-2" style={{ color: '#666', letterSpacing: '1.3px', fontWeight: 500, paddingLeft: 2 }}>
+              Популярные
+            </div>
+            <div className="grid grid-cols-4 gap-2.5 mb-4">
+              {BANKS.filter((b) => b.id !== 'other').map((b) => {
+                const isActive = bankId === b.id
                 return (
-                  <div key={b.id} className="relative">
-                    <button
-                      onClick={() => { haptic.select(); setBankId(b.id) }}
-                      className={`w-full aspect-square rounded-btn flex items-center justify-center cursor-pointer bg-bg-secondary border ${
-                        bankId === b.id ? 'border-accent' : 'border-border'
-                      }`}
-                      style={{ borderWidth: bankId === b.id ? '2px' : '0.5px' }}
-                      title={b.name}
+                  <button
+                    key={b.id}
+                    onClick={() => { haptic.select(); setBankId(b.id) }}
+                    className="flex flex-col items-center cursor-pointer bg-transparent border-0"
+                    style={{ gap: 6 }}
+                  >
+                    <div
+                      className="flex items-center justify-center"
+                      style={{
+                        width: 48, height: 48,
+                        outline: isActive ? '2px solid #ff1744' : 'none',
+                        outlineOffset: 2,
+                        borderRadius: 11,
+                      }}
                     >
-                      <BankIcon bankId={b.id} size={36} />
-                    </button>
-                    {isCustom && (
-                      <button
-                        onClick={(e) => handleDeleteCustomBank(b.id, e)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-bg-tertiary border border-border text-text-muted text-[10px] cursor-pointer flex items-center justify-center"
-                        aria-label="Удалить банк"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
+                      <BankIcon bankId={b.id} size={48} />
+                    </div>
+                    <span style={{ color: isActive ? '#fff' : '#ddd', fontSize: 10 }}>
+                      {b.name}
+                    </span>
+                  </button>
                 )
               })}
-              {customBanks.length < 5 && (
-                <button
-                  onClick={() => { haptic.light(); setShowBankCreator(true) }}
-                  className="aspect-square rounded-btn flex items-center justify-center cursor-pointer bg-transparent border border-dashed border-border text-text-muted text-2xl"
-                  title="Добавить свой банк"
+              {/* "Другой" */}
+              <button
+                onClick={() => { haptic.select(); setBankId('other') }}
+                className="flex flex-col items-center cursor-pointer bg-transparent border-0"
+                style={{ gap: 6 }}
+              >
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 48, height: 48,
+                    background: '#333', borderRadius: 11,
+                    color: '#fff', fontWeight: 700, fontSize: 24,
+                    outline: bankId === 'other' ? '2px solid #ff1744' : 'none',
+                    outlineOffset: 2,
+                  }}
                 >
-                  +
-                </button>
-              )}
+                  ?
+                </div>
+                <span style={{ color: bankId === 'other' ? '#fff' : '#ddd', fontSize: 10 }}>
+                  Другой
+                </span>
+              </button>
             </div>
+
+            {/* v0.34: Мои кастомные */}
             {customBanks.length > 0 && (
-              <div className="text-[10px] text-text-muted mt-1.5">
-                Своих банков: {customBanks.length} / 5
-              </div>
+              <>
+                <div className="text-2xs uppercase mb-2" style={{ color: '#666', letterSpacing: '1.3px', fontWeight: 500, paddingLeft: 2 }}>
+                  Мои кастомные
+                </div>
+                <div className="grid grid-cols-4 gap-2.5 mb-4">
+                  {customBanks.map((b) => {
+                    const isActive = bankId === b.id
+                    return (
+                      <div key={b.id} className="relative flex flex-col items-center" style={{ gap: 6 }}>
+                        <button
+                          onClick={() => { haptic.select(); setBankId(b.id) }}
+                          className="cursor-pointer bg-transparent border-0 p-0"
+                          style={{
+                            width: 48, height: 48,
+                            outline: isActive ? '2px solid #ff1744' : 'none',
+                            outlineOffset: 2,
+                            borderRadius: 11,
+                          }}
+                        >
+                          <BankIcon bankId={b.id} size={48} />
+                        </button>
+                        <span style={{ color: isActive ? '#fff' : '#ddd', fontSize: 10 }}>
+                          {b.name}
+                        </span>
+                        <button
+                          onClick={(e) => handleDeleteCustomBank(b.id, e)}
+                          className="absolute rounded-full bg-bg-tertiary text-text-muted cursor-pointer flex items-center justify-center border-0"
+                          style={{ top: -4, right: 8, width: 18, height: 18, fontSize: 10 }}
+                          aria-label="Удалить банк"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {/* + Добавить свой */}
+                  {customBanks.length < 5 && (
+                    <button
+                      onClick={() => { haptic.light(); setShowBankCreator(true) }}
+                      className="flex flex-col items-center cursor-pointer bg-transparent border-0"
+                      style={{ gap: 6 }}
+                    >
+                      <div
+                        className="flex items-center justify-center"
+                        style={{
+                          width: 48, height: 48,
+                          background: '#141414',
+                          border: '1.5px dashed #333',
+                          borderRadius: 11,
+                          color: '#666', fontSize: 22,
+                        }}
+                      >
+                        +
+                      </div>
+                      <span style={{ color: '#666', fontSize: 10 }}>Добавить</span>
+                    </button>
+                  )}
+                </div>
+              </>
             )}
+
+            {/* Если кастомных нет — отдельная кнопка «+ Свой банк» */}
+            {customBanks.length === 0 && (
+              <button
+                onClick={() => { haptic.light(); setShowBankCreator(true) }}
+                className="w-full cursor-pointer bg-transparent border-0 mb-4 flex items-center justify-center"
+                style={{
+                  padding: 11,
+                  border: '1px dashed #333',
+                  borderRadius: 12,
+                  color: '#ff1744', fontSize: 13, fontWeight: 500,
+                }}
+              >
+                + Добавить свой банк
+              </button>
+            )}
+
+            {/* v0.34: Плашка-подсказка про безопасность */}
+            <div
+              style={{
+                padding: '11px 13px',
+                background: 'rgba(255,23,68,0.06)',
+                border: '0.5px solid rgba(255,23,68,0.2)',
+                borderRadius: 12,
+                color: '#999',
+                fontSize: 11,
+                lineHeight: 1.5,
+                marginBottom: 16,
+              }}
+            >
+              Банк нужен только для иконки на карточке счёта. Данные никуда не отправляются.
+            </div>
           </div>
         )}
 
