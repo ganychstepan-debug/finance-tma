@@ -140,6 +140,7 @@ export const CategoriesScreen: React.FC<Props> = ({ onAddNew, onEdit }) => {
           </div>
         </div>
       ) : viewMode === 'grid' ? (
+        <>
         <div className="px-5 grid grid-cols-4 gap-1.5">
           {categories.map((c) => (
             <CategoryGridItem
@@ -157,6 +158,10 @@ export const CategoriesScreen: React.FC<Props> = ({ onAddNew, onEdit }) => {
             <span className="text-[8px]">Создать</span>
           </button>
         </div>
+
+        {/* v0.80: 5.17 Плашка предупреждения перерасхода */}
+        <OverbudgetWarning categories={categories} state={state} y={y} m={m} />
+        </>
       ) : (
         <div className="px-5 space-y-2.5">
           {categories.map((c) => (
@@ -355,6 +360,61 @@ const CategoryRow: React.FC<{
           } : undefined}
         >
           {hasBudget ? `${percent}%` : spent > 0 ? '—' : ''}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// v0.80: 5.17 Плашка предупреждения о перерасходе
+type StoreState = Parameters<typeof selectCategorySpend>[0]
+
+const OverbudgetWarning: React.FC<{
+  categories: Category[]
+  state: StoreState
+  y: number
+  m: number
+}> = ({ categories, state, y, m }) => {
+  const overbudget = categories
+    .filter((c) => {
+      const b = c.budgetMonthly ?? 0
+      if (b <= 0) return false
+      const spent = selectCategorySpend(state, c.id, y, m)
+      return spent > b
+    })
+    .map((c) => ({
+      category: c,
+      spent: selectCategorySpend(state, c.id, y, m),
+      over: selectCategorySpend(state, c.id, y, m) - (c.budgetMonthly ?? 0),
+    }))
+
+  if (overbudget.length === 0) return null
+
+  const totalOver = overbudget.reduce((s, x) => s + x.over, 0)
+  const baseCurrency = state.settings.baseCurrency
+
+  return (
+    <div
+      className="mx-5 mt-4 flex items-start"
+      style={{
+        padding: '12px 14px',
+        background: 'rgba(255,23,68,0.06)',
+        border: '0.5px solid rgba(255,23,68,0.25)',
+        borderRadius: 12,
+        gap: 10,
+      }}
+    >
+      <span style={{ fontSize: 14, marginTop: 1 }}>⚠️</span>
+      <div>
+        <div style={{ color: '#ff1744', fontSize: 12, fontWeight: 600, marginBottom: 2 }}>
+          {overbudget.length === 1
+            ? `Перерасход по «${overbudget[0].category.name}»`
+            : `Перерасход по ${overbudget.length} категориям`}
+        </div>
+        <div style={{ color: '#aaa', fontSize: 10, lineHeight: 1.4 }}>
+          {overbudget.length === 1
+            ? `На ${Math.round(overbudget[0].over).toLocaleString('ru-RU')} ${baseCurrency} больше заложенного`
+            : `Суммарно ${Math.round(totalOver).toLocaleString('ru-RU')} ${baseCurrency} сверх бюджета`}
         </div>
       </div>
     </div>
