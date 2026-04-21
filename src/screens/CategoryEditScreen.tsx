@@ -82,6 +82,39 @@ export const CategoryEditScreen: React.FC<Props> = ({ editId, defaultType, onClo
       </div>
 
       <div className="px-5 py-4 space-y-4 pb-8">
+        {/* v0.48: Превью сверху — большая иконка 72px по центру */}
+        <div
+          className="flex flex-col items-center"
+          style={{
+            padding: '22px 14px 18px',
+            background: '#141414',
+            borderRadius: 16,
+          }}
+        >
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 72, height: 72,
+              background: type === 'income' ? 'rgba(0,200,100,0.12)' : 'rgba(255,23,68,0.12)',
+              borderRadius: 18,
+              fontSize: 38,
+            }}
+          >
+            {(() => {
+              const isEmojiString = /\p{Extended_Pictographic}/u.test(iconId)
+              if (isEmojiString) return iconId
+              const found = CATEGORY_ICONS.find((ic) => ic.id === iconId)
+              return found?.emoji ?? '📂'
+            })()}
+          </div>
+          <div style={{ color: '#fff', fontSize: 16, fontWeight: 500, marginTop: 12 }}>
+            {name || 'Без названия'}
+          </div>
+          <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>
+            {type === 'expense' ? 'Расход' : 'Доход'}
+          </div>
+        </div>
+
         {/* Тип */}
         {!editId && (
           <div className="flex gap-1.5">
@@ -106,7 +139,9 @@ export const CategoryEditScreen: React.FC<Props> = ({ editId, defaultType, onClo
 
         {/* Название */}
         <div>
-          <label className="text-2xs text-text-muted uppercase tracking-wide block mb-2">Название</label>
+          <label className="text-2xs uppercase block mb-2" style={{ color: '#666', letterSpacing: '1.3px', fontWeight: 500 }}>
+            Название
+          </label>
           <input
             type="text"
             placeholder="Например, Кофе"
@@ -144,15 +179,21 @@ export const CategoryEditScreen: React.FC<Props> = ({ editId, defaultType, onClo
 
         {/* Иконка */}
         <div>
-          <label className="text-2xs text-text-muted uppercase tracking-wide block mb-2">Иконка</label>
-          <div className="grid grid-cols-6 gap-2">
+          <label className="text-2xs uppercase block mb-2" style={{ color: '#666', letterSpacing: '1.3px', fontWeight: 500 }}>
+            Иконка
+          </label>
+          <div className="grid grid-cols-7 gap-1">
             {CATEGORY_ICONS.map((ic) => (
               <button
                 key={ic.id}
                 onClick={() => { haptic.select(); setIconId(ic.id) }}
-                className={`aspect-square rounded-btn flex items-center justify-center text-xl cursor-pointer border-0 ${
-                  iconId === ic.id ? 'bg-accent' : 'bg-bg-secondary'
-                }`}
+                className="aspect-square flex items-center justify-center cursor-pointer"
+                style={{
+                  background: iconId === ic.id ? 'rgba(255,23,68,0.15)' : '#141414',
+                  border: iconId === ic.id ? '1.5px solid #ff1744' : '0',
+                  borderRadius: 10,
+                  fontSize: 20,
+                }}
                 title={ic.label}
               >
                 {ic.emoji}
@@ -164,21 +205,10 @@ export const CategoryEditScreen: React.FC<Props> = ({ editId, defaultType, onClo
           <AiEmojiPicker
             onPicked={(emoji) => {
               haptic.success()
-              setIconId(emoji)  // В icon пишем сам эмодзи напрямую
+              setIconId(emoji)
             }}
             currentCustomEmoji={/\p{Extended_Pictographic}/u.test(iconId) ? iconId : undefined}
           />
-        </div>
-
-        {/* Предпросмотр */}
-        <div className="p-3.5 bg-bg-secondary border border-border rounded-btn flex items-center gap-3">
-          <CategoryIcon iconId={iconId} size="md" variant={type === 'income' ? 'income' : 'expense'} />
-          <div>
-            <div className="text-sm font-medium">{name || 'Без названия'}</div>
-            <div className="text-xs text-text-muted">
-              {type === 'expense' ? 'Расход' : 'Доход'}
-            </div>
-          </div>
         </div>
 
         {/* Бюджет (только для расходов) */}
