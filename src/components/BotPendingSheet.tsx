@@ -51,7 +51,13 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
   useEffect(() => {
     if (!current) return
     const matched = matchCategory(categories, current.categoryGuess, current.type)
-    setCategoryId(matched)
+    if (matched) {
+      setCategoryId(matched)
+    } else {
+      // v0.56: fallback — первая категория того же типа
+      const sameType = categories.filter((c) => c.type === current.type)
+      setCategoryId(sameType[0]?.id ?? null)
+    }
   }, [current?.id, categories])
 
   if (!items) return null

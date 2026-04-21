@@ -65,14 +65,9 @@ export default function App() {
 
   // Changelog: показываем только если версия приложения обновилась
   const [changelog, setChangelog] = useState<boolean>(() => {
-    try {
-      const seen = localStorage.getItem('changelog_version')
-      // Если юзер впервые — не показываем changelog (онбординг достаточно)
-      if (!seen) return false
-      return seen !== String(APP_VERSION)
-    } catch {
-      return false
-    }
+    // v0.56: changelog показывается только по запросу из меню (не автоматом).
+    // Автопоказ раздражал при каждом релизе.
+    return false
   })
 
   // Триггеры локальных уведомлений — проверяем когда нет модалок и онбординга

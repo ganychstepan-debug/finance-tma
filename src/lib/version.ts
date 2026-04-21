@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 61   // = v0.55 — массовый парсинг в боте, fix pending flow
+export const APP_VERSION = 62   // = v0.56 — fix BotPending кнопка disabled, убрал changelog auto-popup
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================
