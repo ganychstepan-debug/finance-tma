@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/store'
-import { getUser, haptic, openTelegramLink, requestWriteAccess, shareViaTelegram } from '@/lib/telegram'
+import { getUser, haptic, openTelegramLink, requestWriteAccess } from '@/lib/telegram'
 import { gradientForUser, getCustomAvatar, setCustomAvatar, removeCustomAvatar, processAvatarFile } from '@/lib/avatar'
 import { APP_CHANNEL_USERNAME, APP_CHANNEL_URL } from '@/lib/version'
 
@@ -115,21 +115,6 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       },
       highlight: true,
     },
-    {
-      id: 'share',
-      icon: '🔗',
-      title: 'Поделиться приложением',
-      subtitle: 'Отправить друзьям в Telegram',
-      onClick: () => {
-        haptic.select()
-        shareViaTelegram(
-          'https://t.me/savemoney_gs_bot',
-          'Сохранёнки — учёт финансов прямо в Telegram. Пишешь боту что потратил, ИИ распознаёт. Попробуй!'
-        )
-        onClose()
-      },
-      highlight: true,
-    },
   ]
 
   const settingsRows: Row[] = [
@@ -193,7 +178,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.80',
+      subtitle: 'Версия v0.81',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {
