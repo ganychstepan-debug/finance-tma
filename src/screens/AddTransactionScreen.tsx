@@ -236,14 +236,10 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           Счёт
         </div>
         <div
-          className="scroll-x"
           style={{
             display: 'flex',
-            flexWrap: 'nowrap',
+            flexWrap: 'wrap',
             gap: 6,
-            paddingBottom: 2,
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-x',
           }}
         >
           {visibleAccounts.map((a) => {
@@ -259,7 +255,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
                 onClick={() => { haptic.select(); setAccountId(a.id) }}
                 className="cursor-pointer"
                 style={{
-                  padding: '8px 13px',
+                  padding: '9px 12px',
                   background: isActive
                     ? (type === 'income' ? '#00c864' : '#ff1744')
                     : '#141414',
@@ -270,7 +266,6 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
                   border: 0,
                   whiteSpace: 'nowrap',
                   display: 'flex', alignItems: 'center', gap: 7,
-                  flexShrink: 0,
                 }}
               >
                 <div
