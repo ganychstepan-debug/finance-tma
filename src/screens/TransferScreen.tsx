@@ -441,7 +441,7 @@ export const TransferScreen: React.FC<Props> = ({ onClose, onDone, onSwitchType 
       </div>
 
       {/* Клавиатура — с запасом снизу до кнопки */}
-      <div className="flex-1 flex flex-col justify-end px-5 pb-6 pt-2 min-h-0">
+      <div className="flex-1 flex flex-col justify-end px-2.5 pb-2 pt-2 min-h-0">
         <div className="text-[10px] text-text-muted uppercase tracking-wide mb-1.5 text-center shrink-0">
           {editingTo
             ? `Сумма зачисления (${toAcc?.currency})`
@@ -450,14 +450,14 @@ export const TransferScreen: React.FC<Props> = ({ onClose, onDone, onSwitchType 
         <NumPad value={activeAmount} onChange={setActiveAmount} />
       </div>
 
-      {/* Закреплённая снизу кнопка Готово — с отступами по бокам */}
+      {/* CTA — с отступом от клавиатуры */}
       <div
         className="shrink-0"
         style={{
-          paddingTop: 4,
-          paddingLeft: 24,
-          paddingRight: 24,
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
+          paddingTop: 10,
+          paddingLeft: 14,
+          paddingRight: 14,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
         }}
       >
         <button

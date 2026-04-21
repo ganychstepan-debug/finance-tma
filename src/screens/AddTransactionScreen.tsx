@@ -148,7 +148,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   }
 
   const content = (
-    <div className="flex flex-col h-full overflow-y-auto" style={{ paddingBottom: 120 }}>
+    <div className="flex flex-col h-full">
       {/* Шапка */}
       <div className="px-5 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
@@ -179,30 +179,32 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         />
       </div>
 
-      {/* Индикатор сканирования / результата */}
-      {(scanning || scanError || scanResult) && (
-        <div className="px-5 pb-2">
-          {scanning && (
-            <div className="p-2.5 bg-accent/10 border border-accent/40 rounded-btn text-center">
-              <div className="text-[11px] text-accent font-medium">🤖 ИИ читает чек...</div>
-              <div className="text-[10px] text-text-muted mt-0.5">Обычно занимает 2-4 секунды</div>
-            </div>
-          )}
-          {scanError && (
-            <div className="p-2.5 bg-accent/10 border border-accent/50 rounded-btn">
-              <div className="text-[11px] text-accent font-medium">⚠ Не получилось</div>
-              <div className="text-[10px] text-text-secondary mt-0.5">{scanError}</div>
-              <div className="text-[10px] text-text-faint mt-1">Заполни форму вручную или попробуй ещё раз</div>
-            </div>
-          )}
-          {!scanning && !scanError && scanResult && (
-            <div className="p-2.5 bg-success/10 border border-success/40 rounded-btn">
-              <div className="text-[11px] text-success font-medium">✓ Распознано: {scanResult.merchant}</div>
-              <div className="text-[10px] text-text-muted mt-0.5">Проверь данные и жми «Готово»</div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* v0.44: Скроллируемый средний блок — сумма/чипы/категории */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Индикатор сканирования / результата */}
+        {(scanning || scanError || scanResult) && (
+          <div className="px-5 pb-2">
+            {scanning && (
+              <div className="p-2.5 bg-accent/10 border border-accent/40 rounded-btn text-center">
+                <div className="text-[11px] text-accent font-medium">🤖 ИИ читает чек...</div>
+                <div className="text-[10px] text-text-muted mt-0.5">Обычно занимает 2-4 секунды</div>
+              </div>
+            )}
+            {scanError && (
+              <div className="p-2.5 bg-accent/10 border border-accent/50 rounded-btn">
+                <div className="text-[11px] text-accent font-medium">⚠ Не получилось</div>
+                <div className="text-[10px] text-text-secondary mt-0.5">{scanError}</div>
+                <div className="text-[10px] text-text-faint mt-1">Заполни форму вручную или попробуй ещё раз</div>
+              </div>
+            )}
+            {!scanning && !scanError && scanResult && (
+              <div className="p-2.5 bg-success/10 border border-success/40 rounded-btn">
+                <div className="text-[11px] text-success font-medium">✓ Распознано: {scanResult.merchant}</div>
+                <div className="text-[10px] text-text-muted mt-0.5">Проверь данные и жми «Готово»</div>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* v0.34: Сумма под макет — 52px, легкая */}
       <div className="px-5 pt-4 pb-3">
@@ -332,31 +334,33 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           <span className="absolute right-3.5 text-text-muted text-xs">▾</span>
         </button>
       </div>
+      </div>
+      {/* конец скроллируемого блока */}
 
-      {/* Цифровая клавиатура — умеренный отступ до кнопки */}
-      <div className="px-5 pb-4">
+      {/* v0.44: Клавиатура — в потоке, не скроллится */}
+      <div className="px-2.5 pt-2 pb-2 shrink-0">
         <NumPad value={amount} onChange={setAmount} />
       </div>
 
-      {/* v0.42: CTA прижата к низу без градиента-подложки чтобы не перекрывать ноль */}
+      {/* v0.44: CTA — в потоке с отступом от клавиатуры и низа */}
       <div
-        className="fixed left-0 right-0 bottom-0 z-10 pointer-events-none"
+        className="px-3.5 shrink-0"
         style={{
-          padding: '8px 24px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+          paddingTop: 4,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
         }}
       >
         <button
           onClick={save}
           disabled={!canSave}
-          className="w-full py-4 rounded-btn text-base font-medium cursor-pointer pointer-events-auto transition-all active:scale-[0.98] border-0"
+          className="w-full py-4 rounded-btn text-base font-semibold cursor-pointer transition-all active:scale-[0.98] border-0"
           style={{
             background: canSave
               ? (type === 'income' ? '#00c864' : '#ff1744')
               : '#1f1f1f',
             color: canSave ? '#fff' : '#555',
             boxShadow: canSave
-              ? `0 4px 20px ${type === 'income' ? 'rgba(0,200,100,0.4)' : 'rgba(255,23,68,0.4)'}`
+              ? `0 4px 16px ${type === 'income' ? 'rgba(0,200,100,0.45)' : 'rgba(255,23,68,0.45)'}`
               : 'none',
           }}
         >
