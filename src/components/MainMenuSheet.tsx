@@ -178,7 +178,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.90',
+      subtitle: 'Версия v0.91',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {

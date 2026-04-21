@@ -152,3 +152,42 @@ export const scanReceipt = async (
     confidence: ['high', 'medium', 'low'].includes(data.confidence) ? data.confidence : 'medium',
   }
 }
+
+// ============================================================================
+// v0.91: AI-парсер импорта (fallback когда хардкод не справился)
+// ============================================================================
+
+import type { ImportRow } from './csv'
+
+export interface ImportParseResult {
+  rows: ImportRow[]
+  errors: string[]
+  detectedFormat: string
+}
+
+export const parseImportAI = async (
+  text: string,
+  accounts: { id: string; name: string }[],
+  categories: { id: string; name: string; type: string }[],
+): Promise<ImportParseResult> => {
+  const res = await fetch('/api/import-parse', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': getInitData(),
+    },
+    body: JSON.stringify({ text, accounts, categories }),
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `Ошибка сервера ${res.status}`)
+  }
+
+  const data = await res.json()
+  return {
+    rows: Array.isArray(data.rows) ? data.rows : [],
+    errors: Array.isArray(data.errors) ? data.errors : [],
+    detectedFormat: String(data.detectedFormat ?? 'Неизвестный'),
+  }
+}

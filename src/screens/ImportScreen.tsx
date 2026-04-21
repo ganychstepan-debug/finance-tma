@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useStore } from '@/store'
 import { BackButton } from '@/components/BackButton'
 import { parseImportCSV, type ImportRow, emptyTemplateCSV, downloadFile } from '@/lib/csv'
+import { parseImportAI } from '@/lib/ai'
 import { haptic } from '@/lib/telegram'
 
 interface Props { onClose: () => void }
@@ -14,6 +15,35 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
   const [errors, setErrors] = useState<string[]>([])
   const [fileName, setFileName] = useState<string>('')
   const [busy, setBusy] = useState(false)
+  // v0.91: состояние AI-fallback
+  const [detectedFormat, setDetectedFormat] = useState<string>('')
+  const [canAiRetry, setCanAiRetry] = useState(false)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [rawText, setRawText] = useState<string>('')
+
+  const tryAiFallback = async (text: string) => {
+    setAiBusy(true)
+    haptic.light()
+    try {
+      const accs = state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))
+      const cats = state.categories.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, type: c.type }))
+      const ai = await parseImportAI(text, accs, cats)
+      setRows(ai.rows)
+      setErrors(ai.errors)
+      setDetectedFormat(ai.detectedFormat + ' (через ИИ)')
+      setCanAiRetry(false)
+      if (ai.rows.length === 0) {
+        setErrors((prev) => [...prev, 'ИИ тоже не смог распознать. Проверь формат файла.'])
+      } else {
+        haptic.success()
+      }
+    } catch (err) {
+      setErrors((prev) => [...prev, `ИИ недоступен: ${(err as Error).message}`])
+      haptic.error()
+    } finally {
+      setAiBusy(false)
+    }
+  }
 
   const handlePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -22,14 +52,30 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
 
     haptic.light()
     setFileName(file.name)
+    setDetectedFormat('')
+    setCanAiRetry(false)
 
     try {
       const text = await file.text()
+      setRawText(text)
       const result = parseImportCSV(text)
       setRows(result.rows)
       setErrors(result.errors)
-      if (result.rows.length === 0 && result.errors.length === 0) {
-        setErrors(['Файл пустой или формат не опознан'])
+      setDetectedFormat(result.detectedFormat || '')
+
+      if (result.rows.length === 0) {
+        if (result.needsAI) {
+          // Автоматически пробуем AI
+          await tryAiFallback(text)
+        } else if (result.errors.length === 0) {
+          setErrors(['Файл пустой или формат не опознан'])
+          setCanAiRetry(true)
+        } else {
+          setCanAiRetry(true)
+        }
+      } else if (result.errors.length > 0 && result.rows.length < 3) {
+        // Мало строк + много ошибок — может AI лучше распознает
+        setCanAiRetry(true)
       }
     } catch (err) {
       setErrors([`Не удалось прочитать файл: ${(err as Error).message}`])
@@ -173,7 +219,7 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
             Загрузить историю
           </div>
           <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5, padding: '0 16px' }}>
-            CSV из другого трекера или из Сохранёнок
+            Дзен-мани · CoinKeeper · Monefy · YNAB · 1Money · Money Lover · Money Manager · любой CSV
           </div>
         </div>
 
@@ -210,6 +256,69 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
             {rows ? 'Нажми чтобы выбрать другой' : 'или перетащи сюда'}
           </div>
         </button>
+
+        {/* v0.91: Плашка распознанного формата */}
+        {detectedFormat && !aiBusy && (
+          <div
+            style={{
+              padding: '8px 12px',
+              marginBottom: 10,
+              background: detectedFormat.includes('ИИ')
+                ? 'rgba(255,170,0,0.08)'
+                : detectedFormat === 'Неизвестный формат' || detectedFormat === 'Без заголовка'
+                  ? 'rgba(255,107,122,0.08)'
+                  : 'rgba(74,222,128,0.08)',
+              border: `0.5px solid ${detectedFormat.includes('ИИ')
+                ? 'rgba(255,170,0,0.3)'
+                : detectedFormat === 'Неизвестный формат' || detectedFormat === 'Без заголовка'
+                  ? 'rgba(255,107,122,0.3)'
+                  : 'rgba(74,222,128,0.25)'}`,
+              borderRadius: 10,
+              fontSize: 12,
+              color: detectedFormat.includes('ИИ')
+                ? '#ffaa00'
+                : detectedFormat === 'Неизвестный формат' || detectedFormat === 'Без заголовка'
+                  ? '#ff6b7a'
+                  : '#4ade80',
+            }}
+          >
+            {detectedFormat.includes('ИИ') ? '🧠' : '📄'} Формат: <b>{detectedFormat}</b>
+            {rows && rows.length > 0 && ` · ${rows.length} строк`}
+          </div>
+        )}
+
+        {/* v0.91: Кнопка AI-fallback */}
+        {canAiRetry && !aiBusy && rawText && (
+          <button
+            onClick={() => tryAiFallback(rawText)}
+            style={{
+              width: '100%', padding: '12px 14px', marginBottom: 14,
+              background: 'linear-gradient(135deg, #ff1744, #c01038)',
+              border: 0, borderRadius: 12,
+              color: '#fff', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            🧠 Распознать через ИИ
+          </button>
+        )}
+
+        {aiBusy && (
+          <div
+            style={{
+              width: '100%', padding: 14, marginBottom: 14,
+              background: '#1f1f1f', borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              color: '#aaa', fontSize: 13,
+            }}
+          >
+            <div className="ai-dot" />
+            <div className="ai-dot" style={{ animationDelay: '0.15s' }} />
+            <div className="ai-dot" style={{ animationDelay: '0.3s' }} />
+            <span style={{ marginLeft: 6 }}>ИИ анализирует файл…</span>
+          </div>
+        )}
 
         {/* Превью */}
         {rows && preview.length > 0 && (
