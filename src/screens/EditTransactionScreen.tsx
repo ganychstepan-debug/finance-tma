@@ -63,6 +63,7 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
   const [accountId, setAccountId] = useState(tx.accountId)
   const [categoryId, setCategoryId] = useState(tx.categoryId ?? '')
   const [comment, setComment]     = useState(tx.comment ?? '')
+  const [commentFocused, setCommentFocused] = useState(false)
   const [txDate, setTxDate]       = useState(new Date(tx.date))
   const [showAccountPicker, setShowAccountPicker] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
@@ -152,8 +153,10 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
           placeholder="Комментарий (не обязательно)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          onFocus={() => setCommentFocused(true)}
+          onBlur={() => setCommentFocused(false)}
           maxLength={300}
-          rows={comment.length > 60 ? 3 : 1}
+          rows={commentFocused || comment.length > 60 ? 4 : 1}
           className="w-full px-3.5 py-3 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border resize-none"
           style={{ minHeight: 44, fontFamily: 'inherit' }}
         />
@@ -173,10 +176,12 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
         </button>
       </div>
 
-      {/* Клавиатура */}
-      <div className="px-5 pb-3">
-        <NumPad value={amount} onChange={setAmount} />
-      </div>
+      {/* Клавиатура — скрываем когда юзер печатает в комментарии */}
+      {!commentFocused && (
+        <div className="px-5 pb-3">
+          <NumPad value={amount} onChange={setAmount} />
+        </div>
+      )}
 
       {/* Удалить */}
       <div className="px-5 pb-6">

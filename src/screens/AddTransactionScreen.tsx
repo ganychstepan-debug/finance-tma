@@ -123,6 +123,24 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           byCategory: result.byCategory,
           items: result.items || [],
         })
+      } else if (result.amount > 0 && accountId) {
+        // v0.92: одна категория — автоматически сохраняем и закрываем
+        const fallbackCategoryId = visibleCategories[0]?.id
+        const catId = result.categoryId || fallbackCategoryId
+        if (catId) {
+          addTransaction({
+            type: 'expense' as TransactionType,
+            amount: result.amount,
+            currency: account?.currency ?? 'RUB',
+            accountId,
+            categoryId: catId,
+            date: txDate.toISOString(),
+            comment: itemsText || result.merchant || undefined,
+          })
+          haptic.success()
+          onDone()
+          return
+        }
       }
 
       haptic.success()
@@ -168,8 +186,29 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   }
 
   const keepAsOne = () => {
-    haptic.light()
+    if (!splitDialog) return
+    haptic.success()
+    // v0.92: «Одной операцией» = сохранить всё вместе одной транзакцией
+    // с суммой = итог чека и комментарием = все товары
+    const fallbackCategoryId = visibleCategories[0]?.id
+    // Если категория уже выбрана (из categoryId) — используем её, иначе fallback
+    const catId = categoryId || fallbackCategoryId
+    if (!accountId || !catId) {
+      setSplitDialog(null)
+      return
+    }
+    const allItems = splitDialog.items.map((it) => it.name).join(', ').slice(0, 200)
+    addTransaction({
+      type: 'expense' as TransactionType,
+      amount: splitDialog.total,
+      currency: account?.currency ?? 'RUB',
+      accountId,
+      categoryId: catId,
+      date: txDate.toISOString(),
+      comment: allItems || splitDialog.merchant || undefined,
+    })
     setSplitDialog(null)
+    onDone()
   }
 
   const account = visibleAccounts.find((a) => a.id === accountId)
@@ -771,7 +810,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
       {/* v0.87: Диалог разбивки по категориям */}
       {splitDialog && (
         <div
-          onClick={keepAsOne}
+          onClick={() => { haptic.light(); setSplitDialog(null) }}
           className="fixed inset-0 bg-black/70 flex items-end z-[90] animate-fade-in"
         >
           <div
