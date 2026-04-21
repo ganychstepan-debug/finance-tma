@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { BackButton } from '@/components/BackButton'
-import { getRates, ratesAgeHours, type Rates } from '@/lib/fx'
+import { getRates, ratesAgeHours, convert, type Rates } from '@/lib/fx'
 import { currencySign } from '@/lib/formatters'
+import { useStore } from '@/store'
 
 interface Props { onClose: () => void }
 
@@ -24,6 +25,7 @@ const CURRENCY_NAMES: Record<string, string> = {
 const DISPLAY_ORDER = ['USD', 'EUR', 'KZT', 'GBP', 'CNY', 'TRY', 'BYN', 'UAH', 'CHF', 'GEL', 'AED', 'INR', 'JPY']
 
 export const RatesScreen: React.FC<Props> = ({ onClose }) => {
+  const baseCurrency = useStore((s) => s.settings.baseCurrency)
   const [rates, setRates] = useState<Rates | null>(null)
   const [age, setAge] = useState<number>(-1)
 
@@ -111,13 +113,14 @@ export const RatesScreen: React.FC<Props> = ({ onClose }) => {
           className="mb-2"
           style={{ color: '#666', fontSize: 10, letterSpacing: '1px', fontWeight: 600, textTransform: 'uppercase', paddingLeft: 2 }}
         >
-          Курсы к ₽
+          Курсы к {currencySign(baseCurrency)}
         </div>
         <div className="flex flex-col" style={{ gap: 5 }}>
           {rates && DISPLAY_ORDER
-            .filter((code) => rates[code] !== undefined)
+            .filter((code) => code !== baseCurrency && rates[code] !== undefined)
             .map((code) => {
-              const value = rates[code]
+              // v0.66: конвертируем 1 единицу валюты в основную через convert()
+              const value = convert(1, code, baseCurrency, rates)
               return (
                 <div
                   key={code}
@@ -150,7 +153,7 @@ export const RatesScreen: React.FC<Props> = ({ onClose }) => {
                     color: '#fff', fontSize: 14, fontWeight: 600,
                     fontVariantNumeric: 'tabular-nums',
                   }}>
-                    {value < 1 ? value.toFixed(4) : value.toFixed(2)} ₽
+                    {value < 1 ? value.toFixed(4) : value.toFixed(2)} {currencySign(baseCurrency)}
                   </div>
                 </div>
               )

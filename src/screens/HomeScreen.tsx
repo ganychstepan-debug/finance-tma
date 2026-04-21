@@ -7,7 +7,7 @@ import { SwipeableRow } from '@/components/SwipeableRow'
 import { formatMoneyShort, currencySign } from '@/lib/formatters'
 import { iconById } from '@/lib/icons'
 import { haptic } from '@/lib/telegram'
-import { getRates } from '@/lib/fx'
+import { getRates, convert } from '@/lib/fx'
 
 interface Props {
   onAddExpense: () => void
@@ -34,10 +34,10 @@ export const HomeScreen: React.FC<Props> = ({
   const [showInUSD, setShowInUSD] = useState(false)
   const displayCurrency = showInUSD ? 'USD' : state.settings.baseCurrency
 
-  // v0.65: курс USD/RUB для эквивалента под балансом при переключении
-  const [usdRate, setUsdRate] = useState<number | null>(null)
+  // v0.66: курс подгружаем для эквивалента
+  const [ratesLoaded, setRatesLoaded] = useState(false)
   useEffect(() => {
-    getRates().then((r) => setUsdRate(r.USD || null)).catch(() => {})
+    getRates().then(() => setRatesLoaded(true)).catch(() => {})
   }, [])
 
   const activeGoals = (state.goals ?? []).filter((g) => !g.archived)
@@ -108,12 +108,19 @@ export const HomeScreen: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* v0.65: Эквивалент в основной валюте + курс */}
-        {showInUSD && usdRate && (
-          <div style={{ color: '#666', fontSize: 11, marginTop: 6 }}>
-            ≈ {Math.round(total * usdRate).toLocaleString('ru-RU')} ₽ · курс {usdRate.toFixed(2)}
-          </div>
-        )}
+        {/* v0.66: Эквивалент в основной валюте через convert() */}
+        {showInUSD && ratesLoaded && (() => {
+          const baseCurrency = state.settings.baseCurrency
+          const equiv = convert(total, 'USD', baseCurrency)
+          // курс = сколько единиц base стоит 1 USD
+          const rate = convert(1, 'USD', baseCurrency)
+          const sign = currencySign(baseCurrency)
+          return (
+            <div style={{ color: '#666', fontSize: 11, marginTop: 6 }}>
+              ≈ {Math.round(equiv).toLocaleString('ru-RU')} {sign} · 1 $ = {rate.toFixed(2)} {sign}
+            </div>
+          )
+        })()}
 
         {monthDelta !== 0 && (
           <div
