@@ -16,6 +16,7 @@ import { CurrencyScreen } from '@/screens/CurrencyScreen'
 import { RatesScreen } from '@/screens/RatesScreen'
 import { ExportScreen } from '@/screens/ExportScreen'
 import { ImportScreen } from '@/screens/ImportScreen'
+import { SyncScreen } from '@/screens/SyncScreen'
 import { WipeScreen } from '@/screens/WipeScreen'
 import { OnboardingScreen } from '@/screens/OnboardingScreen'
 import { TransferScreen } from '@/screens/TransferScreen'
@@ -47,6 +48,7 @@ type Modal =
   | { kind: 'referral' }
   | { kind: 'export' }
   | { kind: 'import' }
+  | { kind: 'sync' }
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home')
@@ -306,6 +308,14 @@ export default function App() {
     )
   }
 
+  if (modal.kind === 'sync') {
+    return wrap(
+      <div className="h-screen flex flex-col">
+        <SyncScreen onClose={close} />
+      </div>
+    )
+  }
+
   if (modal.kind === 'wipe') {
     return wrap(
       <div className="h-screen flex flex-col">
@@ -404,6 +414,7 @@ export default function App() {
           onOpenRates={() => { setMenuOpen(false); setModal({ kind: 'rates' }) }}
           onOpenExport={() => { setMenuOpen(false); setModal({ kind: 'export' }) }}
           onOpenImport={() => { setMenuOpen(false); setModal({ kind: 'import' }) }}
+          onOpenSync={() => { setMenuOpen(false); setModal({ kind: 'sync' }) }}
           onShowChangelog={() => {
             setMenuOpen(false)
             // Сбрасываем метку, чтобы при следующем открытии она снова появилась.

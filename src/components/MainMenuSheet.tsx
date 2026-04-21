@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/store'
-import { getUser, haptic, openTelegramLink, requestWriteAccess, requestContact, showPopup, shareViaTelegram } from '@/lib/telegram'
+import { getUser, haptic, openTelegramLink, requestWriteAccess, shareViaTelegram } from '@/lib/telegram'
 import { gradientForUser, getCustomAvatar, setCustomAvatar, removeCustomAvatar, processAvatarFile } from '@/lib/avatar'
 import { APP_CHANNEL_USERNAME, APP_CHANNEL_URL } from '@/lib/version'
 
@@ -13,6 +13,7 @@ interface Props {
   onOpenRates: () => void
   onOpenExport: () => void
   onOpenImport: () => void
+  onOpenSync: () => void
   onShowChangelog: () => void
   onShowOnboarding: () => void
 }
@@ -28,7 +29,7 @@ type Row = {
   rightText?: string    // крупный текст справа (например код валюты)
 }
 
-export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onOpenExport, onOpenImport, onShowChangelog, onShowOnboarding }) => {
+export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onOpenExport, onOpenImport, onOpenSync, onShowChangelog, onShowOnboarding }) => {
   const state = useStore()
   const user = getUser()
   const firstName = user?.first_name ?? 'Гость'
@@ -76,34 +77,6 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
     return () => window.removeEventListener('avatar-updated', handler)
   }, [])
 
-  const handleRestore = async () => {
-    const pressed = await showPopup({
-      title: 'Восстановить из облака?',
-      message: 'Текущие локальные данные будут заменены на те, что хранятся в Telegram-облаке. Используй если данные пропали после переустановки.',
-      buttons: [
-        { id: 'cancel', type: 'cancel', text: 'Отмена' },
-        { id: 'restore', type: 'destructive', text: 'Восстановить' },
-      ],
-    })
-    if (pressed !== 'restore') return
-    haptic.medium()
-    const result = await state.restoreFromCloud()
-    if (result.restored) {
-      await showPopup({
-        title: 'Готово',
-        message: `Восстановлено транзакций: ${result.transactions}`,
-        buttons: [{ type: 'ok', text: 'OK' }],
-      })
-      onClose()
-    } else {
-      await showPopup({
-        title: 'В облаке нет данных',
-        message: 'Возможно, это первый запуск — данные начнут синхронизироваться автоматически.',
-        buttons: [{ type: 'ok', text: 'OK' }],
-      })
-    }
-  }
-
   // v0.77: Отслеживаем статус уведомлений в localStorage
   const [writeAccessGranted, setWriteAccessGranted] = useState<boolean>(() => {
     try { return localStorage.getItem('bot_write_access') === '1' } catch { return false }
@@ -117,15 +90,6 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       haptic.success()
     } else {
       haptic.error()
-    }
-  }
-
-  const handleShareContact = async () => {
-    haptic.medium()
-    const shared = await requestContact()
-    if (shared) {
-      try { localStorage.setItem('bot_contact_shared', '1') } catch {}
-      haptic.success()
     }
   }
 
@@ -202,11 +166,11 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
 
   const dataRows: Row[] = [
     {
-      id: 'restore',
+      id: 'sync',
       icon: '☁️',
-      title: 'Восстановить из облака',
-      subtitle: 'Если данные пропали',
-      onClick: handleRestore,
+      title: 'Синхронизация',
+      subtitle: state.meta?.lastSyncAt ? 'Автосохранение в Telegram-облако' : 'Ещё не синхронизировано',
+      onClick: () => { haptic.select(); onClose(); onOpenSync() },
     },
     {
       id: 'export',
@@ -229,7 +193,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.77',
+      subtitle: 'Версия v0.78',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {

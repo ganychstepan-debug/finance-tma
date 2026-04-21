@@ -120,7 +120,14 @@ const SYNC_DEBOUNCE_MS = 2000
 const scheduleCloudSync = (state: AppState) => {
   if (syncTimer) clearTimeout(syncTimer)
   syncTimer = setTimeout(() => {
-    syncToCloud(state).catch((e) => console.warn('cloud sync failed', e))
+    syncToCloud(state).then(() => {
+      // v0.78: обновляем lastSyncAt в state чтобы экран 5.15 показывал актуальное время
+      const now = new Date().toISOString()
+      useStore.setState((s) => ({
+        ...s,
+        meta: { ...s.meta, lastSyncAt: now },
+      }))
+    }).catch((e) => console.warn('cloud sync failed', e))
   }, SYNC_DEBOUNCE_MS)
 }
 
