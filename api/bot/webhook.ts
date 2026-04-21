@@ -67,21 +67,29 @@ const tgApi = async (method: string, payload: Record<string, unknown>) => {
 const sendBotMessage = async (
   chatId: string | number,
   opts: { text: string; inlineKeyboard?: InlineKeyboard },
-) =>
-  tgApi('sendMessage', {
+): Promise<{ message_id: number } | null> => {
+  const res = await tgApi('sendMessage', {
     chat_id: chatId,
     text: opts.text,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
     reply_markup: opts.inlineKeyboard ? { inline_keyboard: opts.inlineKeyboard } : undefined,
   })
+  try {
+    const data = await res.json() as { ok?: boolean; result?: { message_id?: number } }
+    if (data?.ok && data.result?.message_id) {
+      return { message_id: data.result.message_id }
+    }
+  } catch {}
+  return null
+}
 
 const editBotMessage = async (
   chatId: string | number,
   messageId: number,
   opts: { text: string; inlineKeyboard?: InlineKeyboard },
-) =>
-  tgApi('editMessageText', {
+): Promise<{ ok: boolean }> => {
+  const res = await tgApi('editMessageText', {
     chat_id: chatId,
     message_id: messageId,
     text: opts.text,
@@ -89,9 +97,20 @@ const editBotMessage = async (
     disable_web_page_preview: true,
     reply_markup: opts.inlineKeyboard ? { inline_keyboard: opts.inlineKeyboard } : undefined,
   })
+  try {
+    const data = await res.json() as { ok?: boolean }
+    return { ok: Boolean(data?.ok) }
+  } catch {
+    return { ok: false }
+  }
+}
 
 const answerCallback = async (id: string, text?: string) =>
   tgApi('answerCallbackQuery', { callback_query_id: id, text })
+
+// v0.83: индикатор «бот печатает…»
+const sendChatAction = async (chatId: string | number, action: 'typing' | 'record_voice' = 'typing') =>
+  tgApi('sendChatAction', { chat_id: chatId, action }).catch(() => {})
 
 // ---------- Category/currency icons для карточек в чате ----------
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -159,23 +178,40 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     return
   }
 
+  // v0.83: индикатор «бот печатает» + плейсхолдер-сообщение, которое будет
+  // отредактировано финальным результатом (или удалено если решили слать новое).
+  sendChatAction(userId, 'typing')
+  const placeholderText = source === 'voice' ? '🎤 Слушаю и распознаю…' : '⏳ Распознаю…'
+  const placeholder = await sendBotMessage(userId, { text: placeholderText })
+  const placeholderId = placeholder?.message_id
+
+  // Хелпер: если есть плейсхолдер — редактируем, иначе шлём новое
+  const reply = async (text: string, keyboard?: InlineKeyboard) => {
+    if (placeholderId) {
+      const ok = await editBotMessage(userId, placeholderId, { text, inlineKeyboard: keyboard })
+        .then((r) => r.ok)
+        .catch(() => false)
+      if (ok) return
+    }
+    await sendBotMessage(userId, { text, inlineKeyboard: keyboard })
+  }
+
   let parsedList: Awaited<ReturnType<typeof parseExpensePhrases>>
   try {
     parsedList = await parseExpensePhrases(rawText)
   } catch (e) {
     console.error('parse error:', (e as Error).message)
-    await sendBotMessage(userId, { text: '❌ Не получилось распознать. Попробуй ещё раз или открой приложение.' })
+    await reply('❌ Не получилось распознать. Попробуй ещё раз или открой приложение.')
     return
   }
 
   if (parsedList.length === 0) {
-    await sendBotMessage(userId, {
-      text:
-        `🤔 Не понял. Напиши так:\n`
-        + `<code>такси 500</code>\n`
-        + `<code>пятёрочка 1500</code>\n`
-        + `<code>кофе 300 и такси 500</code>`,
-    })
+    await reply(
+      `🤔 Не понял. Напиши так:\n`
+      + `<code>такси 500</code>\n`
+      + `<code>пятёрочка 1500</code>\n`
+      + `<code>кофе 300 и такси 500</code>`,
+    )
     return
   }
 
@@ -207,7 +243,7 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
   }
 
   if (txList.length === 0) {
-    await sendBotMessage(userId, { text: '❌ Не получилось сохранить. Попробуй ещё раз.' })
+    await reply('❌ Не получилось сохранить. Попробуй ещё раз.')
     return
   }
 
@@ -216,14 +252,10 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     const tx = txList[0]
     const parsed = parsedList[0]
     const cardText = formatTxCard(tx, parsed.daysAgo ?? 0)
-    await sendBotMessage(userId, {
-      text: cardText,
-      inlineKeyboard: [
-        [{ text: '✅ Добавить', callback_data: `confirm:${tx.id}` }],
-        [{ text: '📱 В приложении', url: APP_URL }],
-        [{ text: '❌ Отменить', callback_data: `cancel:${tx.id}` }],
-      ],
-    })
+    await reply(cardText, [
+      [{ text: '✅ Добавить', callback_data: `confirm:${tx.id}` }],
+      [{ text: '❌ Отменить', callback_data: `cancel:${tx.id}` }],
+    ])
     return
   }
 
@@ -233,20 +265,17 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     const sign = tx.type === 'expense' ? '−' : '+'
     const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
     const cur = CURRENCY_SIGN[tx.currency] || tx.currency
-    summary += `${emoji} ${sign}${tx.amount.toLocaleString('ru-RU')} ${cur}`
+    const amountStr = tx.amount > 0 ? tx.amount.toLocaleString('ru-RU') : '?'
+    summary += `${emoji} ${sign}${amountStr} ${cur}`
     if (tx.merchant) summary += ` · ${escapeHtml(tx.merchant)}`
     summary += `\n`
   }
   summary += `\nВсё верно? Жми «Добавить все» — операции попадут в приложение автоматически.`
 
-  await sendBotMessage(userId, {
-    text: summary,
-    inlineKeyboard: [
-      [{ text: '✅ Добавить все', callback_data: 'confirm_all' }],
-      [{ text: '📱 В приложении', url: APP_URL }],
-      [{ text: '❌ Отменить', callback_data: 'cancel_all' }],
-    ],
-  })
+  await reply(summary, [
+    [{ text: '✅ Добавить все', callback_data: 'confirm_all' }],
+    [{ text: '❌ Отменить', callback_data: 'cancel_all' }],
+  ])
 }
 
 // ---------- handleCallback ----------
@@ -269,8 +298,7 @@ const handleCallback = async (cb: TgCallback) => {
       console.error('confirm error:', (e as Error).message)
     }
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Добавлено. Откроешь приложение — появится в списке.',
-      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+      text: '✅ Добавлено. Открой приложение — операция появится в списке.',
     }).catch(() => {})
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
@@ -294,8 +322,7 @@ const handleCallback = async (cb: TgCallback) => {
       text:
         n > 0
           ? `✅ Подтверждено <b>${n}</b> операций.\n\nОткрой приложение — появятся в списке.`
-          : '✅ Уже подтверждено. Откроешь приложение — появятся.',
-      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+          : '✅ Уже подтверждено. Открой приложение — появятся.',
     }).catch(() => {})
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
@@ -306,7 +333,6 @@ const handleCallback = async (cb: TgCallback) => {
     try { await removePendingTx(userId, txId) } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
       text: '❌ Отменено',
-      inlineKeyboard: [[{ text: 'Открыть приложение', url: APP_URL }]],
     }).catch(() => {})
     await answerCallback(cb.id, 'Отменено').catch(() => {})
     return json({ ok: true })
@@ -322,7 +348,6 @@ const handleCallback = async (cb: TgCallback) => {
     } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
       text: '❌ Все операции отменены',
-      inlineKeyboard: [[{ text: 'Открыть приложение', url: APP_URL }]],
     }).catch(() => {})
     await answerCallback(cb.id, 'Отменено').catch(() => {})
     return json({ ok: true })
@@ -339,8 +364,7 @@ const handleCallback = async (cb: TgCallback) => {
       }
     } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Добавлено. Откроешь приложение — появится в списке.',
-      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+      text: '✅ Добавлено. Открой приложение — операция появится в списке.',
     }).catch(() => {})
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })

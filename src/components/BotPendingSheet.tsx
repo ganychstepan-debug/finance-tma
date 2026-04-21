@@ -41,12 +41,15 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
   const [accountId, setAccountId] = useState<string>(visibleAccounts[0]?.id ?? '')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // v0.83: если бот распознал операцию без суммы — даём ввести вручную
+  const [amountOverride, setAmountOverride] = useState<string>('')
 
   useEffect(() => {
     fetchPendingTxs().then(async (all) => {
       // v0.58: авто-подтверждённые (нажал «Добавить все» в боте) — материализуем сразу без UI
-      const auto = all.filter((t) => t.autoConfirmed)
-      const manual = all.filter((t) => !t.autoConfirmed)
+      // v0.83: но только если amount > 0. Нулевые — всегда в ручной поток.
+      const auto = all.filter((t) => t.autoConfirmed && t.amount > 0)
+      const manual = all.filter((t) => !t.autoConfirmed || t.amount <= 0)
       for (const t of auto) {
         const defaultAccount = visibleAccounts[0]
         if (!defaultAccount) continue
@@ -80,6 +83,7 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
       const sameType = categories.filter((c) => c.type === current.type)
       setCategoryId(sameType[0]?.id ?? null)
     }
+    setAmountOverride('')
   }, [current?.id, categories])
 
   if (!items) return null
@@ -94,7 +98,10 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
 
   const account = visibleAccounts.find((a) => a.id === accountId)
   const suitableCategories = categories.filter((c) => c.type === current.type)
-  const canSave = account && categoryId && current.amount > 0
+  const needsAmount = current.amount <= 0
+  const overrideNum = Number(amountOverride.replace(',', '.')) || 0
+  const effectiveAmount = needsAmount ? overrideNum : current.amount
+  const canSave = Boolean(account && categoryId && effectiveAmount > 0)
 
   const handleSkip = async () => {
     haptic.light()
@@ -111,7 +118,7 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
     haptic.success()
     addTransaction({
       type: current.type,
-      amount: current.amount,
+      amount: effectiveAmount,
       currency: (current.currency as any) || account.currency,
       accountId: account.id,
       categoryId,
@@ -155,13 +162,41 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
             <span className="text-xs text-text-muted truncate">{current.rawText}</span>
           </div>
 
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className={`text-[36px] font-light leading-none ${current.type === 'expense' ? 'text-accent' : 'text-success'}`}>
-              {sign}{current.amount.toLocaleString('ru-RU')}
-            </span>
-            <span className="text-lg text-text-muted">{currencySign((current.currency as any) || 'RUB')}</span>
-          </div>
-          <div className="text-xs text-text-muted">
+          {needsAmount ? (
+            <div className="mb-1">
+              <div className="text-2xs text-text-muted uppercase tracking-wide mb-1.5">
+                Сумма не распознана — введи вручную
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-[32px] font-light leading-none ${current.type === 'expense' ? 'text-accent' : 'text-success'}`}>
+                  {sign}
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={amountOverride}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9.,]/g, '')
+                    setAmountOverride(v)
+                  }}
+                  placeholder="0"
+                  className="flex-1 bg-transparent border-0 outline-none text-[32px] font-light leading-none text-white placeholder:text-text-faint"
+                  style={{ minWidth: 0 }}
+                />
+                <span className="text-lg text-text-muted">{currencySign((current.currency as any) || 'RUB')}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className={`text-[36px] font-light leading-none ${current.type === 'expense' ? 'text-accent' : 'text-success'}`}>
+                {sign}{current.amount.toLocaleString('ru-RU')}
+              </span>
+              <span className="text-lg text-text-muted">{currencySign((current.currency as any) || 'RUB')}</span>
+            </div>
+          )}
+
+          <div className="text-xs text-text-muted mt-1">
             {current.categoryGuess}
             {current.merchant ? ` · ${current.merchant}` : ''}
           </div>
