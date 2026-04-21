@@ -182,8 +182,8 @@ export interface ImportResult {
 
 const parseType = (s: string): ImportRow['type'] | null => {
   const v = s.trim().toLowerCase()
-  if (v === 'расход' || v === 'expense' || v === 'trata' || v === 'трата') return 'expense'
-  if (v === 'доход' || v === 'income' || v === 'прибыль') return 'income'
+  if (v === 'расход' || v === 'expense' || v === 'trata' || v === 'трата' || v === 'out' || v === 'debit') return 'expense'
+  if (v === 'доход' || v === 'income' || v === 'прибыль' || v === 'in' || v === 'credit') return 'income'
   if (v === 'перевод' || v === 'transfer') return 'transfer'
   return null
 }
@@ -191,12 +191,9 @@ const parseType = (s: string): ImportRow['type'] | null => {
 // v0.91: универсальный парсер даты из нескольких форматов
 const parseAnyDate = (s: string): string | null => {
   if (!s) return null
-  const trimmed = s.trim()
-  // Сначала пробуем ISO / нативный Date.parse
-  const iso = Date.parse(trimmed.replace(' ', 'T'))
-  if (!isNaN(iso)) return new Date(iso).toISOString()
+  const trimmed = s.trim().replace(/^"|"$/g, '')
 
-  // DD.MM.YYYY или DD/MM/YYYY или DD-MM-YYYY
+  // v0.93: сначала DD.MM.YYYY / DD/MM/YYYY / DD-MM-YYYY (европейский формат, частый в RU-экспортах)
   const m = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?:[ T](\d{1,2}):(\d{2}))?/)
   if (m) {
     let [, dd, mm, yyyy, hh = '0', mi = '0'] = m
@@ -205,6 +202,11 @@ const parseAnyDate = (s: string): string | null => {
     const d = new Date(Number(year), Number(mm) - 1, Number(dd), Number(hh), Number(mi))
     if (!isNaN(d.getTime())) return d.toISOString()
   }
+
+  // Потом ISO / нативный Date.parse (YYYY-MM-DD и т.д.)
+  const iso = Date.parse(trimmed.replace(' ', 'T'))
+  if (!isNaN(iso)) return new Date(iso).toISOString()
+
   return null
 }
 
@@ -289,8 +291,13 @@ const detectFormat = (headers: string[]): FormatInfo => {
     return { key: 'zenmoney', name: 'Дзен-мани' }
   }
 
-  // CoinKeeper: "Дата;Сумма;Валюта;Счёт;Категория;Описание" или "Date;Amount;Currency;Account;Category;Note"
-  // Отличается от нашего отсутствием колонки "Тип" (знак суммы определяет тип)
+  // CoinKeeper (экспорт v2): "Date,Type,From,To,Tags,Amount,Currency,Amount converted,Currency of conversion,Recurrence,Note"
+  // Ключевой признак — колонки From и To одновременно + Type
+  if (hasAny('from') && hasAny('to') && hasAny('type') && hasAny('amount')) {
+    return { key: 'coinkeeper', name: 'CoinKeeper' }
+  }
+
+  // CoinKeeper (старый формат RU): "Дата;Сумма;Валюта;Счёт;Категория;Описание"
   if ((has('дата', 'сумма', 'счёт', 'категория') && !hasAny('тип')) ||
       (has('date', 'amount', 'account', 'category') && !hasAny('type'))) {
     return { key: 'coinkeeper', name: 'CoinKeeper' }
@@ -330,9 +337,16 @@ const detectFormat = (headers: string[]): FormatInfo => {
 
 const findCol = (headers: string[], ...names: string[]): number => {
   const norm = headers.map((h) => h.toLowerCase().trim())
+  // v0.93: сначала точное совпадение — для всех имён из списка
   for (const n of names) {
     const nn = n.toLowerCase()
-    const idx = norm.findIndex((h) => h === nn || h.includes(nn))
+    const idx = norm.findIndex((h) => h === nn)
+    if (idx >= 0) return idx
+  }
+  // Потом частичное (includes)
+  for (const n of names) {
+    const nn = n.toLowerCase()
+    const idx = norm.findIndex((h) => h.includes(nn))
     if (idx >= 0) return idx
   }
   return -1
@@ -451,18 +465,24 @@ const adaptZenmoney = (headers: string[], dataLines: string[], sep: ';' | ',' | 
     if (cells.length < 3) return
     const lineNo = idx + 2
 
-    const dateISO = parseAnyDate(cells[dateIdx] ?? '')
+    const dateStr = cells[dateIdx] ?? ''
+    // v0.93: пропускаем корректировки баланса с датой 1970-01-01
+    if (dateStr.startsWith('1970')) return
+    const dateISO = parseAnyDate(dateStr)
     if (!dateISO) return
 
-    const outAmt = outSumIdx >= 0 ? Number(String(cells[outSumIdx]).replace(',', '.')) || 0 : 0
-    const inAmt  = inSumIdx  >= 0 ? Number(String(cells[inSumIdx]).replace(',', '.')) || 0 : 0
-    const outAcc = outAccIdx >= 0 ? cells[outAccIdx] : ''
-    const inAcc  = inAccIdx  >= 0 ? cells[inAccIdx] : ''
+    // v0.93: суммы в дзен-мани бывают в формате "296,84" — заменяем запятую
+    const parseZenAmount = (s: string) => Number(String(s ?? '').replace(/[" ]/g, '').replace(',', '.')) || 0
 
-    const categoryName = catIdx >= 0 ? cells[catIdx] : ''
+    const outAmt = outSumIdx >= 0 ? parseZenAmount(cells[outSumIdx]) : 0
+    const inAmt  = inSumIdx  >= 0 ? parseZenAmount(cells[inSumIdx]) : 0
+    const outAcc = outAccIdx >= 0 ? (cells[outAccIdx] ?? '').replace(/^"|"$/g, '') : ''
+    const inAcc  = inAccIdx  >= 0 ? (cells[inAccIdx] ?? '').replace(/^"|"$/g, '') : ''
+
+    const categoryName = catIdx >= 0 ? (cells[catIdx] ?? '').replace(/^"|"$/g, '') : ''
     const comment = [
-      payeeIdx >= 0 ? cells[payeeIdx] : '',
-      commentIdx >= 0 ? cells[commentIdx] : '',
+      payeeIdx >= 0 ? (cells[payeeIdx] ?? '').replace(/^"|"$/g, '') : '',
+      commentIdx >= 0 ? (cells[commentIdx] ?? '').replace(/^"|"$/g, '') : '',
     ].filter(Boolean).join(' · ').slice(0, 140) || undefined
 
     // Перевод: есть и outcome, и income, и разные счета
@@ -508,6 +528,78 @@ const adaptZenmoney = (headers: string[], dataLines: string[], sep: ';' | ',' | 
     }
 
     errors.push(`Строка ${lineNo}: не удалось определить тип операции (нет суммы)`)
+  })
+
+  return { rows, errors }
+}
+
+// v0.93: CoinKeeper v2 — "Date,Type,From,To,Tags,Amount,Currency,..."
+// Для expense: From=счёт, To=категория. Для income: наоборот. Для transfer: оба счёта.
+const adaptCoinKeeper = (headers: string[], dataLines: string[], sep: ';' | ',' | '\t' | '|'): ImportResult => {
+  const errors: string[] = []
+  const rows: ImportRow[] = []
+
+  const dateIdx = findCol(headers, 'date', 'дата')
+  const typeIdx = findCol(headers, 'type', 'тип')
+  const fromIdx = findCol(headers, 'from', 'источник')
+  const toIdx = findCol(headers, 'to', 'получатель')
+  const amountIdx = findCol(headers, 'amount', 'сумма')
+  const currencyIdx = findCol(headers, 'currency', 'валюта')
+  const noteIdx = findCol(headers, 'note', 'заметка', 'описание', 'description')
+
+  if (dateIdx < 0 || amountIdx < 0 || fromIdx < 0 || toIdx < 0) {
+    errors.push('CoinKeeper: не найдены колонки Date/Amount/From/To')
+    return { rows, errors, needsAI: true }
+  }
+
+  dataLines.forEach((line, idx) => {
+    const cells = parseCsvLine(line, sep).map((c) => c.trim())
+    if (cells.length < 5) return
+    const lineNo = idx + 2
+
+    const dateISO = parseAnyDate(cells[dateIdx] ?? '')
+    if (!dateISO) return
+
+    const parsed = parseAmount(cells[amountIdx] ?? '')
+    if (!parsed || parsed.amount <= 0) return
+
+    const typeRaw = typeIdx >= 0 ? (cells[typeIdx] ?? '').toLowerCase().trim() : ''
+    const from = cells[fromIdx] ?? ''
+    const to = cells[toIdx] ?? ''
+    const note = noteIdx >= 0 ? cells[noteIdx] : ''
+
+    let type: ImportRow['type'] = 'expense'
+    let accountName = ''
+    let categoryName = ''
+
+    if (typeRaw === 'expense' || typeRaw === 'расход') {
+      type = 'expense'
+      accountName = from
+      categoryName = to
+    } else if (typeRaw === 'income' || typeRaw === 'доход') {
+      type = 'income'
+      accountName = to       // доход приходит НА счёт (to)
+      categoryName = from    // from = источник дохода (категория)
+    } else if (typeRaw === 'transfer' || typeRaw === 'перевод') {
+      type = 'transfer'
+      accountName = from
+      categoryName = to      // в transfer это второй счёт — разберётся на импорте
+    } else {
+      // тип неизвестен — дефолт expense
+      type = 'expense'
+      accountName = from
+      categoryName = to
+    }
+
+    rows.push({
+      date: dateISO,
+      type,
+      amount: parsed.amount,
+      currency: currencyIdx >= 0 ? (cells[currencyIdx] || 'RUB').toUpperCase() : 'RUB',
+      accountName: accountName || 'Импорт',
+      categoryName: categoryName || '',
+      comment: note || undefined,
+    })
   })
 
   return { rows, errors }
@@ -597,6 +689,8 @@ export const parseImportCSV = (text: string): ImportResult => {
       result = adaptZenmoney(headers, dataLines, sep)
       break
     case 'coinkeeper':
+      result = adaptCoinKeeper(headers, dataLines, sep)
+      break
     case 'monefy':
     case 'moneymanager':
     case 'moneylover':
