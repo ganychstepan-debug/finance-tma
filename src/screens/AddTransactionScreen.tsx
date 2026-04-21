@@ -166,7 +166,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
             <span>{scanning ? '...' : 'Чек'}</span>
           </button>
         ) : (
-          <div style={{ width: 72 }} />
+          <div style={{ width: 60 }} />
         )}
         <input
           ref={fileInputRef}
@@ -214,12 +214,21 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           Сумма
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{
-            color: type === 'expense' ? '#ff1744' : '#00c864',
-            fontSize: 52, fontWeight: 300, letterSpacing: '-0.04em', lineHeight: 1,
-          }}>
-            {type === 'expense' ? '−' : '+'}{amount}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span style={{
+              color: type === 'expense' ? '#ff1744' : '#00c864',
+              fontSize: 36, fontWeight: 300, lineHeight: 1,
+              marginRight: 2,
+            }}>
+              {type === 'expense' ? '−' : '+'}
+            </span>
+            <span style={{
+              color: type === 'expense' ? '#ff1744' : '#00c864',
+              fontSize: 52, fontWeight: 300, letterSpacing: '-0.04em', lineHeight: 1,
+            }}>
+              {amount}
+            </span>
+          </div>
           <span style={{ color: '#666', fontSize: 22, fontWeight: 400 }}>
             {account?.currency === 'RUB' ? '₽' : account?.currency}
           </span>
