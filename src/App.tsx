@@ -71,10 +71,29 @@ export default function App() {
     }
   })
 
-  // Changelog: показываем только если версия приложения обновилась
+  // Changelog: автопоказ только по понедельникам после смены версии.
+  // v0.56: убрали автопоказ при каждом релизе — раздражал.
+  // v0.85: вернули, но раз в неделю по понедельникам.
   const [changelog, setChangelog] = useState<boolean>(() => {
-    // v0.56: changelog показывается только по запросу из меню (не автоматом).
-    // Автопоказ раздражал при каждом релизе.
+    try {
+      const seenVersion = Number(localStorage.getItem('changelog_seen_version') || '0')
+      const lastShownDate = localStorage.getItem('changelog_last_monday') || ''
+      const today = new Date()
+      const isMonday = today.getDay() === 1
+      const todayISO = today.toISOString().slice(0, 10) // YYYY-MM-DD
+
+      // Условия показа:
+      // 1) версия выросла с последнего просмотра
+      // 2) сегодня ещё не показывали
+      // 3) сегодня понедельник ИЛИ юзер ещё ни разу не видел changelog (первый запуск этой фичи)
+      const versionGrew = APP_VERSION > seenVersion
+      const notShownToday = lastShownDate !== todayISO
+      const firstTime = seenVersion === 0
+
+      if (versionGrew && notShownToday && (isMonday || firstTime)) {
+        return true
+      }
+    } catch {}
     return false
   })
 
@@ -185,7 +204,12 @@ export default function App() {
     return wrap(
       <div className="h-screen flex flex-col">
         <ChangelogScreen onDone={() => {
-          try { localStorage.setItem('changelog_version', String(APP_VERSION)) } catch {}
+          try {
+            localStorage.setItem('changelog_version', String(APP_VERSION))
+            // v0.85: отмечаем что сегодня уже показали — в этот понедельник больше не покажем
+            localStorage.setItem('changelog_seen_version', String(APP_VERSION))
+            localStorage.setItem('changelog_last_monday', new Date().toISOString().slice(0, 10))
+          } catch {}
           setChangelog(false)
         }} />
       </div>
