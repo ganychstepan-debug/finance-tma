@@ -38,7 +38,7 @@ export const TransferScreen: React.FC<Props> = ({ onClose, onDone, onSwitchType 
   const { accounts, goals, addTransaction, addAccount, updateGoal } = useStore()
   // Счета для выбора как источник — все видимые, включая цели
   // (разрешаем переводить и С цели на цель или обратно)
-  const visibleAccounts = accounts.filter((a) => !a.archived)
+  const visibleAccounts = accounts.filter((a) => !a.archived && a.type !== 'goal')
   // Активные цели (для режима «На цель»)
   const activeGoals = (goals ?? []).filter((g) => !g.archived)
 

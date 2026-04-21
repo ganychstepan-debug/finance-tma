@@ -41,7 +41,8 @@ interface Props {
 export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, onAddCategory, onSwitchType }) => {
   const state = useStore()
   const { accounts, addTransaction } = state
-  const visibleAccounts = accounts.filter((a) => !a.archived)
+  // v0.42: в расходах/доходах цели НЕ участвуют как счета — цели только в переводах
+  const visibleAccounts = accounts.filter((a) => !a.archived && a.type !== 'goal')
   // Категории отсортированы по частоте использования (частые сверху).
   // useMemo чтобы пересчёт был только при изменении transactions/categories.
   const visibleCategories = useMemo(
@@ -147,7 +148,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   }
 
   const content = (
-    <div className="flex flex-col h-full overflow-y-auto pb-32">
+    <div className="flex flex-col h-full overflow-y-auto" style={{ paddingBottom: 120 }}>
       {/* Шапка */}
       <div className="px-5 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
@@ -232,7 +233,17 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         }}>
           Счёт
         </div>
-        <div className="flex gap-1.5 scroll-x pb-0.5">
+        <div
+          className="scroll-x"
+          style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
+            gap: 6,
+            paddingBottom: 2,
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x',
+          }}
+        >
           {visibleAccounts.map((a) => {
             const isActive = a.id === accountId
             const bank = a.type === 'card' ? bankById(a.bankId) : null
@@ -327,15 +338,12 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         <NumPad value={amount} onChange={setAmount} />
       </div>
 
-      {/* Закреплённая снизу кнопка Готово — визуально по центру между клавиатурой и низом */}
+      {/* v0.42: CTA прижата к низу без градиента-подложки чтобы не перекрывать ноль */}
       <div
         className="fixed left-0 right-0 bottom-0 z-10 pointer-events-none"
         style={{
-          background: 'linear-gradient(to top, rgb(var(--c-bg-primary)) 0%, rgb(var(--c-bg-primary)) 70%, transparent 100%)',
-          paddingTop: 12,
-          paddingLeft: 24,
-          paddingRight: 24,
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+          padding: '8px 24px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
         }}
       >
         <button
