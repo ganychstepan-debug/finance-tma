@@ -21,6 +21,32 @@ export const HomeHeader: React.FC<Props> = ({ month, onMonthChange, onMenuOpen, 
   const [customAvatar, setCustom] = useState<string | null>(() => getCustomAvatar())
   const [tgImgFailed, setTgImgFailed] = useState(false)
 
+  // v0.82: подсказка что аватарка = меню. Флаг в localStorage, показывается
+  // пока юзер хоть раз не откроет меню (тап по аватарке снимает флаг).
+  const [showMenuHint, setShowMenuHint] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('menu_hint_dismissed') !== '1'
+    } catch {
+      return false
+    }
+  })
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  useEffect(() => {
+    if (!showMenuHint) return
+    // Тултип появляется на 500мс позже и висит ~3 сек (анимация сама)
+    const t = setTimeout(() => setShowTooltip(true), 500)
+    const hide = setTimeout(() => setShowTooltip(false), 500 + 3200)
+    return () => { clearTimeout(t); clearTimeout(hide) }
+  }, [showMenuHint])
+
+  const dismissMenuHint = () => {
+    if (!showMenuHint) return
+    setShowMenuHint(false)
+    setShowTooltip(false)
+    try { localStorage.setItem('menu_hint_dismissed', '1') } catch {}
+  }
+
   useEffect(() => {
     const handler = () => setCustom(getCustomAvatar())
     window.addEventListener('avatar-updated', handler)
@@ -59,26 +85,48 @@ export const HomeHeader: React.FC<Props> = ({ month, onMonthChange, onMenuOpen, 
           <span className="text-xs font-medium text-accent tracking-wide">{baseCurrency}</span>
         </button>
 
-        <button
-          onClick={() => { haptic.light(); onMenuOpen() }}
-          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-0 cursor-pointer active:scale-95 transition-transform overflow-hidden relative"
-          style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
-          aria-label="Меню"
-        >
-          <span className="text-sm font-medium text-white">{initial}</span>
+        <div className="relative">
+          <button
+            onClick={() => { haptic.light(); dismissMenuHint(); onMenuOpen() }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-0 cursor-pointer active:scale-95 transition-transform overflow-hidden relative ${showMenuHint ? 'menu-hint-pulse' : ''}`}
+            style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+            aria-label="Меню"
+          >
+            <span className="text-sm font-medium text-white">{initial}</span>
 
-          {showPhoto && (
-            <img
-              src={photoUrl!}
-              alt={firstName}
-              onError={() => {
-                if (!customAvatar) setTgImgFailed(true)
-              }}
-              referrerPolicy="no-referrer"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            {showPhoto && (
+              <img
+                src={photoUrl!}
+                alt={firstName}
+                onError={() => {
+                  if (!customAvatar) setTgImgFailed(true)
+                }}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+          </button>
+
+          {showMenuHint && showTooltip && (
+            <div
+              className="menu-hint-tooltip absolute right-0 top-full mt-2 pointer-events-none z-50"
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <div className="relative">
+                <div
+                  className="absolute -top-1 right-3 w-2 h-2 rotate-45"
+                  style={{ background: '#ff1744' }}
+                />
+                <div
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                  style={{ background: '#ff1744', boxShadow: '0 4px 12px rgba(255,23,68,0.4)' }}
+                >
+                  Меню здесь
+                </div>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
       </div>
     </div>
   )

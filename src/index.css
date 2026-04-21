@@ -225,3 +225,24 @@ button:active {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* v0.82: подсказка что аватарка — это меню */
+@keyframes menuHintPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255,23,68,0.6), 0 0 0 0 rgba(255,23,68,0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255,23,68,0), 0 0 20px 4px rgba(255,23,68,0.4);
+  }
+}
+.menu-hint-pulse {
+  animation: menuHintPulse 1.6s ease-in-out infinite;
+}
+@keyframes menuHintTooltip {
+  0% { opacity: 0; transform: translateY(-4px); }
+  10%, 85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.menu-hint-tooltip {
+  animation: menuHintTooltip 3.2s ease-out forwards;
+}
