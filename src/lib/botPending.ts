@@ -18,32 +18,24 @@ export interface BotPendingTx {
   createdAt: string
   source: 'text' | 'voice'
   rawText: string
+  /** v0.58: пользователь в боте нажал «Добавить все» — в приложении не показывать модалку, сразу материализовать */
+  autoConfirmed?: boolean
 }
 
 const BASE_URL = '/api/bot/pending'
 
 export const fetchPendingTxs = async (): Promise<BotPendingTx[]> => {
   const initData = getInitData()
-  if (!initData) {
-    console.warn('[botPending] no initData — not running in Telegram?')
-    return []
-  }
+  if (!initData) return []
   try {
     const res = await fetch(BASE_URL, {
       method: 'GET',
       headers: { 'X-Telegram-Init-Data': initData },
     })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      console.warn(`[botPending] fetch failed ${res.status}:`, errText.slice(0, 200))
-      return []
-    }
+    if (!res.ok) return []
     const data = await res.json()
-    const items = Array.isArray(data?.items) ? data.items : []
-    console.log(`[botPending] got ${items.length} items`)
-    return items
-  } catch (e) {
-    console.warn('[botPending] fetch error:', (e as Error).message)
+    return Array.isArray(data?.items) ? data.items : []
+  } catch {
     return []
   }
 }

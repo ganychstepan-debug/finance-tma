@@ -1,160 +1,158 @@
 /**
- * POST /api/bot/webhook
- * Обрабатывает сообщения юзера: /start, /help, текст, голос, нажатия inline-кнопок.
+ * Telegram Bot webhook.
+ *
+ * v0.58:
+ *   • Сводка 2+ операций теперь имеет 3 кнопки:
+ *       ❌ Отменить все         (callback_data: cancel_all)
+ *       ✅ Добавить все          (callback_data: confirm_all)
+ *       📱 Добавить в приложении (url-кнопка — открывает Mini App и показывает 3.09)
+ *   • Новый callback `confirm_all` — перезаписывает все pending юзера с флагом
+ *     autoConfirmed: true. Приложение при следующем открытии сразу материализует
+ *     их в store (без модалки 3.09).
  */
 
-import { json } from '../_shared'
-import { sendBotMessage, editBotMessage, answerCallback, escapeHtml } from '../_bot'
-import { setPendingReferral, addPendingTx, removePendingTx, type PendingTx } from '../_kv'
 import { parseExpensePhrases } from '../_parser'
+import {
+  addPendingTx,
+  removePendingTx,
+  getPendingTxList,
+  type PendingTx,
+} from '../_kv'
 
-export const config = { runtime: 'edge' }
+const BOT_TOKEN = (typeof process !== 'undefined' ? process.env?.BOT_TOKEN : undefined) ?? ''
+const APP_URL = (typeof process !== 'undefined' ? process.env?.APP_URL : undefined)
+  ?? 'https://t.me/savemoney_gs_bot/app'
 
-const BOT_WEBHOOK_SECRET = (globalThis as any).process?.env?.BOT_WEBHOOK_SECRET
-  ?? (typeof process !== 'undefined' ? process.env?.BOT_WEBHOOK_SECRET : undefined)
-
-const APP_URL = 'https://t.me/savemoney_gs_bot/finance'
-
-interface TgVoice {
-  file_id: string
-  duration: number
-  transcription?: string
+// ---------- Telegram types (минимум) ----------
+interface TgMessage {
+  message_id: number
+  chat: { id: number }
+  from?: { id: number; first_name?: string; username?: string }
+  text?: string
+  voice?: { file_id: string; transcription?: string }
 }
-
+interface TgCallback {
+  id: string
+  data?: string
+  from: { id: number }
+  message?: TgMessage
+}
 interface TgUpdate {
-  message?: {
-    message_id: number
-    from?: { id: number; first_name?: string; username?: string }
-    chat: { id: number; type: string }
-    text?: string
-    voice?: TgVoice
-  }
-  callback_query?: {
-    id: string
-    from: { id: number; first_name?: string }
-    message?: { message_id: number; chat: { id: number } }
-    data?: string
-  }
+  message?: TgMessage
+  callback_query?: TgCallback
+}
+type InlineButton = { text: string; callback_data?: string; url?: string }
+type InlineKeyboard = InlineButton[][]
+
+// ---------- Helpers ----------
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const tgApi = async (method: string, payload: Record<string, unknown>) => {
+  if (!BOT_TOKEN) throw new Error('BOT_TOKEN missing')
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return res
 }
 
+const sendBotMessage = async (
+  chatId: string | number,
+  opts: { text: string; inlineKeyboard?: InlineKeyboard },
+) =>
+  tgApi('sendMessage', {
+    chat_id: chatId,
+    text: opts.text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: opts.inlineKeyboard ? { inline_keyboard: opts.inlineKeyboard } : undefined,
+  })
+
+const editBotMessage = async (
+  chatId: string | number,
+  messageId: number,
+  opts: { text: string; inlineKeyboard?: InlineKeyboard },
+) =>
+  tgApi('editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    text: opts.text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: opts.inlineKeyboard ? { inline_keyboard: opts.inlineKeyboard } : undefined,
+  })
+
+const answerCallback = async (id: string, text?: string) =>
+  tgApi('answerCallbackQuery', { callback_query_id: id, text })
+
+// ---------- Category/currency icons для карточек в чате ----------
 const CATEGORY_EMOJI: Record<string, string> = {
-  'Еда': '🍔', 'Транспорт': '🚗', 'Дом': '🏠', 'Развлечения': '🎮',
-  'Одежда': '👕', 'Здоровье': '💊', 'Поездки': '✈️', 'Связь': '📱',
-  'Подарки': '🎁', 'Спорт': '💪', 'Образование': '📚', 'Подписки': '🔁',
-  'Зарплата': '💰', 'Другое': '📌',
+  'Еда': '🍔', 'Продукты': '🛒', 'Транспорт': '🚕', 'Кафе': '☕', 'Связь': '📱',
+  'Развлечения': '🎬', 'Здоровье': '💊', 'Одежда': '👕', 'Дом': '🏠', 'Путешествия': '✈️',
+  'Подарки': '🎁', 'Образование': '📚', 'Спорт': '🏋️', 'Дети': '👶', 'Прочее': '📌',
+  'Другое': '📌', 'Зарплата': '💰', 'Подработка': '💵', 'Доход': '💰',
 }
-
 const CURRENCY_SIGN: Record<string, string> = {
-  RUB: '₽', USD: '$', EUR: '€', KZT: '₸', BYN: 'Br', UAH: '₴',
-  GBP: '£', CNY: '¥', JPY: '¥', TRY: '₺',
+  RUB: '₽', USD: '$', EUR: '€', GBP: '£', CNY: '¥', JPY: '¥',
+  KZT: '₸', BYN: 'Br', UAH: '₴', CHF: '₣', GEL: '₾', AED: 'د.إ', INR: '₹', TRY: '₺',
 }
 
-const dateLabel = (daysAgo: number): string => {
-  if (daysAgo === 0) return 'сегодня'
-  if (daysAgo === 1) return 'вчера'
-  return `${daysAgo} дн. назад`
-}
-
-const formatTxCard = (tx: PendingTx, daysAgo: number): string => {
+const formatTxCard = (tx: PendingTx, daysAgo: number) => {
   const sign = tx.type === 'expense' ? '−' : '+'
   const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
   const cur = CURRENCY_SIGN[tx.currency] || tx.currency
-  const amountStr = tx.amount > 0 ? tx.amount.toLocaleString('ru-RU') : '?'
-  let text = `${emoji} <b>${escapeHtml(tx.categoryGuess)}</b>\n`
-  text += `${sign}${amountStr} ${cur} · ${dateLabel(daysAgo)}`
-  if (tx.merchant) text += ` · ${escapeHtml(tx.merchant)}`
-  if (tx.comment) text += `\n<i>${escapeHtml(tx.comment)}</i>`
-  text += tx.amount > 0
-    ? `\n\nДобавить в Сохранёнки?`
-    : `\n\n⚠ Сумма не распознана — укажи в приложении.`
-  return text
+  const when = daysAgo === 0 ? 'сегодня' : daysAgo === 1 ? 'вчера' : `${daysAgo} дн. назад`
+  let out = `${emoji} <b>${sign}${tx.amount.toLocaleString('ru-RU')} ${cur}</b>\n`
+  out += `<i>${escapeHtml(tx.categoryGuess)}</i>`
+  if (tx.merchant) out += ` · ${escapeHtml(tx.merchant)}`
+  out += `\n📅 ${when}`
+  if (tx.comment) out += `\n💬 ${escapeHtml(tx.comment)}`
+  return out
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-
-  if (BOT_WEBHOOK_SECRET) {
-    const got = req.headers.get('X-Telegram-Bot-Api-Secret-Token')
-    if (got !== BOT_WEBHOOK_SECRET) return json({ error: 'forbidden' }, 403)
-  }
-
-  let update: TgUpdate
-  try {
-    update = await req.json()
-  } catch {
-    return json({ ok: true })
-  }
-
-  if (update.callback_query) {
-    return handleCallback(update.callback_query)
-  }
-
-  const msg = update.message
-  if (!msg?.from) return json({ ok: true })
-
-  const userId = String(msg.from.id)
-  const firstName = msg.from.first_name ?? 'друг'
-
-  if (msg.voice) {
-    const transcript = msg.voice.transcription
-    if (!transcript) {
-      await sendBotMessage(userId, {
-        text:
-          '🎤 Пока мы распознаём только текстовые сообщения.\n\n'
-          + 'Ты можешь:\n'
-          + '• Расшифровать голосовое сам и прислать текстом\n'
-          + '• Или включить режим диктовки на клавиатуре\n\n'
-          + 'Например: <code>такси 500</code>',
-      })
-      return json({ ok: true })
-    }
-    await handlePhrase(userId, transcript, 'voice')
-    return json({ ok: true })
-  }
-
-  if (!msg.text) return json({ ok: true })
-  const text = msg.text.trim()
-
-  if (text.startsWith('/start')) {
-    const param = text.slice('/start'.length).trim()
-    if (param.startsWith('ref_')) {
-      const inviterId = param.slice(4)
-      if (/^\d+$/.test(inviterId) && inviterId !== userId) {
-        try { await setPendingReferral(userId, inviterId) } catch {}
-      }
-    }
-    const greet =
-      `Привет, <b>${escapeHtml(firstName)}</b>! 👋\n\n`
-      + `<b>Сохранёнки</b> — учёт финансов прямо в Telegram.\n\n`
-      + `💬 Пиши одну или несколько операций: <i>«кофе 300, такси 500»</i>\n`
-      + `🎤 Голосовые — расшифруй сам или включи режим диктовки\n`
-      + `📸 В приложении — скан чеков, статистика, цели\n\n`
-      + `Жми кнопку 👇`
-    await sendBotMessage(userId, { text: greet, withOpenButton: true })
-    return json({ ok: true })
-  }
-
-  if (text === '/help') {
-    await sendBotMessage(userId, {
-      text:
-        `<b>Как пользоваться</b>\n\n`
-        + `Пиши фразы, я распознаю:\n`
-        + `• <code>такси 500</code>\n`
-        + `• <code>пятёрочка 1500</code>\n`
-        + `• <code>зарплата 80к</code>\n`
-        + `• <code>вчера купил шоколадку 120</code>\n`
-        + `• <code>20 долларов за игру</code>\n\n`
-        + `Можно несколько сразу:\n`
-        + `• <code>кофе 300, такси 500, зарплата 80к</code>\n\n`
-        + `Открой приложение — подтверди каждую операцию одним тапом.`,
-    })
-    return json({ ok: true })
-  }
-
-  await handlePhrase(userId, text, 'text')
-  return json({ ok: true })
+// ---------- /start, /help ----------
+const handleStart = async (userId: string, firstName: string) => {
+  const greet =
+    `Привет, <b>${escapeHtml(firstName)}</b>! 👋\n\n`
+    + `<b>Сохранёнки</b> — учёт финансов прямо в Telegram.\n\n`
+    + `💬 Пиши одну или несколько операций: <i>«кофе 300, такси 500»</i>\n`
+    + `🎤 Или голосом (Telegram Premium)\n`
+    + `📸 В приложении — скан чеков, статистика, цели\n\n`
+    + `Жми кнопку 👇`
+  await sendBotMessage(userId, {
+    text: greet,
+    inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+  })
 }
 
+const handleHelp = async (userId: string) => {
+  await sendBotMessage(userId, {
+    text:
+      `<b>Как пользоваться</b>\n\n`
+      + `Пиши фразы, я распознаю:\n`
+      + `• <code>такси 500</code>\n`
+      + `• <code>пятёрочка 1500</code>\n`
+      + `• <code>зарплата 80к</code>\n`
+      + `• <code>вчера купил шоколадку 120</code>\n`
+      + `• <code>20 долларов за игру</code>\n\n`
+      + `Можно несколько сразу:\n`
+      + `• <code>кофе 300, такси 500, зарплата 80к</code>\n\n`
+      + `После распознавания:\n`
+      + `• <b>Добавить все</b> — если всё верно, операции появятся в приложении автоматически\n`
+      + `• <b>В приложении</b> — подтвердить каждую вручную (можно поменять счёт/категорию)\n`
+      + `• <b>Отменить</b> — удалить всё`,
+  })
+}
+
+// ---------- handlePhrase ----------
 const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'voice') => {
   if (rawText.length > 500) {
     await sendBotMessage(userId, { text: '⚠ Слишком длинное сообщение. Максимум 500 символов.' })
@@ -181,7 +179,6 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     return
   }
 
-  // Сохраняем все в KV
   const txList: PendingTx[] = []
   for (let i = 0; i < parsedList.length; i++) {
     const parsed = parsedList[i]
@@ -199,11 +196,11 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
       createdAt: new Date().toISOString(),
       source,
       rawText,
-    }
+      autoConfirmed: false,
+    } as PendingTx
     try {
       await addPendingTx(userId, tx)
       txList.push(tx)
-      console.log(`[webhook] saved pending for userId=${userId} id=${tx.id}`)
     } catch (e) {
       console.error('kv error:', (e as Error).message)
     }
@@ -214,7 +211,7 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     return
   }
 
-  // Одна операция — показываем карточку как раньше
+  // ---- ОДНА ОПЕРАЦИЯ ----
   if (txList.length === 1) {
     const tx = txList[0]
     const parsed = parsedList[0]
@@ -222,41 +219,89 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     await sendBotMessage(userId, {
       text: cardText,
       inlineKeyboard: [
-        [{ text: '📱 Открыть в приложении', url: APP_URL }],
+        [{ text: '✅ Добавить', callback_data: `confirm:${tx.id}` }],
+        [{ text: '📱 В приложении', url: APP_URL }],
         [{ text: '❌ Отменить', callback_data: `cancel:${tx.id}` }],
       ],
     })
     return
   }
 
-  // Много операций — сводка + кнопка в приложение
+  // ---- НЕСКОЛЬКО ОПЕРАЦИЙ ----
   let summary = `✅ Распознал <b>${txList.length}</b> операций:\n\n`
   for (const tx of txList) {
     const sign = tx.type === 'expense' ? '−' : '+'
     const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
     const cur = CURRENCY_SIGN[tx.currency] || tx.currency
-    const amountStr = tx.amount > 0 ? tx.amount.toLocaleString('ru-RU') : '?'
-    summary += `${emoji} ${sign}${amountStr} ${cur}`
+    summary += `${emoji} ${sign}${tx.amount.toLocaleString('ru-RU')} ${cur}`
     if (tx.merchant) summary += ` · ${escapeHtml(tx.merchant)}`
     summary += `\n`
   }
-  summary += `\nОткрой приложение — подтверди каждую.`
+  summary += `\nВсё верно? Жми «Добавить все» — операции попадут в приложение автоматически.`
 
   await sendBotMessage(userId, {
     text: summary,
     inlineKeyboard: [
-      [{ text: '📱 Открыть Сохранёнки', url: APP_URL }],
-      [{ text: '❌ Отменить все', callback_data: `cancel_all` }],
+      [{ text: '✅ Добавить все', callback_data: 'confirm_all' }],
+      [{ text: '📱 В приложении', url: APP_URL }],
+      [{ text: '❌ Отменить', callback_data: 'cancel_all' }],
     ],
   })
 }
 
-const handleCallback = async (cb: NonNullable<TgUpdate['callback_query']>) => {
+// ---------- handleCallback ----------
+const handleCallback = async (cb: TgCallback) => {
   const userId = String(cb.from.id)
   const data = cb.data ?? ''
   const [action, txId] = data.split(':')
   const msg = cb.message
 
+  // === confirm одной ===
+  if (action === 'confirm' && txId && msg) {
+    try {
+      const list = await getPendingTxList(userId)
+      const tx = list.find((t) => t.id === txId)
+      if (tx) {
+        await removePendingTx(userId, txId)
+        await addPendingTx(userId, { ...tx, autoConfirmed: true } as PendingTx)
+      }
+    } catch (e) {
+      console.error('confirm error:', (e as Error).message)
+    }
+    await editBotMessage(msg.chat.id, msg.message_id, {
+      text: '✅ Добавлено. Откроешь приложение — появится в списке.',
+      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+    }).catch(() => {})
+    await answerCallback(cb.id, 'Добавлено').catch(() => {})
+    return json({ ok: true })
+  }
+
+  // === confirm_all — помечает ВСЕ pending юзера как autoConfirmed ===
+  if (action === 'confirm_all' && msg) {
+    let n = 0
+    try {
+      const list = await getPendingTxList(userId)
+      for (const tx of list) {
+        if (tx.autoConfirmed) continue
+        await removePendingTx(userId, tx.id)
+        await addPendingTx(userId, { ...tx, autoConfirmed: true } as PendingTx)
+        n++
+      }
+    } catch (e) {
+      console.error('confirm_all error:', (e as Error).message)
+    }
+    await editBotMessage(msg.chat.id, msg.message_id, {
+      text:
+        n > 0
+          ? `✅ Подтверждено <b>${n}</b> операций.\n\nОткрой приложение — появятся в списке.`
+          : '✅ Уже подтверждено. Откроешь приложение — появятся.',
+      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+    }).catch(() => {})
+    await answerCallback(cb.id, 'Добавлено').catch(() => {})
+    return json({ ok: true })
+  }
+
+  // === cancel одной ===
   if (action === 'cancel' && txId && msg) {
     try { await removePendingTx(userId, txId) } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
@@ -267,10 +312,9 @@ const handleCallback = async (cb: NonNullable<TgUpdate['callback_query']>) => {
     return json({ ok: true })
   }
 
+  // === cancel_all — чистит всё ===
   if (action === 'cancel_all' && msg) {
-    // Удаляем ВСЕ pending юзера
     try {
-      const { getPendingTxList, removePendingTx } = await import('../_kv')
       const list = await getPendingTxList(userId)
       for (const t of list) {
         try { await removePendingTx(userId, t.id) } catch {}
@@ -284,16 +328,82 @@ const handleCallback = async (cb: NonNullable<TgUpdate['callback_query']>) => {
     return json({ ok: true })
   }
 
-  // Старый 'add' — поддерживаем для совместимости старых карточек
+  // === legacy `add:` — старые карточки ===
   if (action === 'add' && txId && msg) {
+    try {
+      const list = await getPendingTxList(userId)
+      const tx = list.find((t) => t.id === txId)
+      if (tx) {
+        await removePendingTx(userId, txId)
+        await addPendingTx(userId, { ...tx, autoConfirmed: true } as PendingTx)
+      }
+    } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Жди в приложении!\n\nОткрой Сохранёнки — там будет окно подтверждения.',
+      text: '✅ Добавлено. Откроешь приложение — появится в списке.',
       inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
     }).catch(() => {})
-    await answerCallback(cb.id, 'Открой приложение').catch(() => {})
+    await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
   }
 
   await answerCallback(cb.id).catch(() => {})
   return json({ ok: true })
+}
+
+// ---------- entrypoint ----------
+export const config = { runtime: 'edge' }
+
+export default async function handler(req: Request) {
+  if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405)
+  let update: TgUpdate
+  try {
+    update = await req.json()
+  } catch {
+    return json({ ok: false, error: 'bad json' }, 400)
+  }
+
+  try {
+    if (update.callback_query) {
+      return await handleCallback(update.callback_query)
+    }
+
+    const msg = update.message
+    if (!msg || !msg.from) return json({ ok: true })
+    const userId = String(msg.from.id)
+    const firstName = msg.from.first_name || 'друг'
+
+    const text = msg.text?.trim() ?? ''
+
+    if (text === '/start') {
+      await handleStart(userId, firstName)
+      return json({ ok: true })
+    }
+    if (text === '/help') {
+      await handleHelp(userId)
+      return json({ ok: true })
+    }
+
+    // голос — только premium (у обычных юзеров transcription отсутствует)
+    if (msg.voice) {
+      const transcription = msg.voice.transcription
+      if (transcription) {
+        await handlePhrase(userId, transcription, 'voice')
+      } else {
+        await sendBotMessage(userId, {
+          text: '🎤 Голос пока работает только у Telegram Premium. Напиши текстом, пожалуйста.',
+        })
+      }
+      return json({ ok: true })
+    }
+
+    if (text) {
+      await handlePhrase(userId, text, 'text')
+      return json({ ok: true })
+    }
+
+    return json({ ok: true })
+  } catch (e) {
+    console.error('webhook error:', (e as Error).message)
+    return json({ ok: false, error: 'handler' }, 500)
+  }
 }
