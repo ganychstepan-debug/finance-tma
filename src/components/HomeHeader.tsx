@@ -23,9 +23,11 @@ export const HomeHeader: React.FC<Props> = ({ month, onMonthChange, onMenuOpen, 
 
   // v0.82: подсказка что аватарка = меню. Флаг в localStorage, показывается
   // пока юзер хоть раз не откроет меню (тап по аватарке снимает флаг).
+  // v0.84: ключ с версией — если поменять суффикс, подсказка появится заново у всех.
+  const HINT_KEY = 'menu_hint_dismissed_v2'
   const [showMenuHint, setShowMenuHint] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('menu_hint_dismissed') !== '1'
+      return localStorage.getItem(HINT_KEY) !== '1'
     } catch {
       return false
     }
@@ -44,7 +46,7 @@ export const HomeHeader: React.FC<Props> = ({ month, onMonthChange, onMenuOpen, 
     if (!showMenuHint) return
     setShowMenuHint(false)
     setShowTooltip(false)
-    try { localStorage.setItem('menu_hint_dismissed', '1') } catch {}
+    try { localStorage.setItem(HINT_KEY, '1') } catch {}
   }
 
   useEffect(() => {
