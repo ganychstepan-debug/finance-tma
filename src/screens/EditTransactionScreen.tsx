@@ -148,13 +148,14 @@ export const EditTransactionScreen: React.FC<Props> = ({ txId, onClose, onDone }
 
       {/* Комментарий */}
       <div className="px-5 pb-3.5">
-        <input
-          type="text"
+        <textarea
           placeholder="Комментарий (не обязательно)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          maxLength={140}
-          className="w-full px-3.5 py-3 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border"
+          maxLength={300}
+          rows={comment.length > 60 ? 3 : 1}
+          className="w-full px-3.5 py-3 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border resize-none"
+          style={{ minHeight: 44, fontFamily: 'inherit' }}
         />
       </div>
 

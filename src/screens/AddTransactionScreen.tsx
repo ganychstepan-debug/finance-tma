@@ -139,10 +139,8 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
   const applySplit = () => {
     if (!splitDialog || !accountId) return
     haptic.success()
-    const baseDate = (() => {
-      const d = new Date(splitDialog.date)
-      return isNaN(d.getTime()) ? txDate : d
-    })()
+    // v0.90: используем txDate (текущая дата экрана, обычно "сегодня"),
+    // а не дату чека — иначе если чек старше 7 дней, операции не попадают в ленту главной.
     const fallbackCategoryId = visibleCategories[0]?.id
     for (const g of splitDialog.byCategory) {
       if (g.total <= 0) continue
@@ -161,7 +159,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         currency: account?.currency ?? 'RUB',
         accountId,
         categoryId: catId,
-        date: baseDate.toISOString(),
+        date: txDate.toISOString(),
         comment: itemsInCat || splitDialog.merchant || undefined,
       })
     }
@@ -406,13 +404,14 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
 
       {/* Комментарий */}
       <div className="px-5 pb-2">
-        <input
-          type="text"
+        <textarea
           placeholder="Комментарий (не обязательно)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          maxLength={140}
-          className="w-full px-3.5 py-2.5 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border"
+          maxLength={300}
+          rows={comment.length > 60 ? 3 : 1}
+          className="w-full px-3.5 py-2.5 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border resize-none"
+          style={{ minHeight: 40, fontFamily: 'inherit' }}
         />
       </div>
 
