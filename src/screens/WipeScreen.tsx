@@ -68,16 +68,25 @@ export const WipeScreen: React.FC<Props> = ({ onClose }) => {
         <div className="w-12" />
       </div>
 
-      <div className="px-5 py-4 space-y-5 pb-10">
+      <div className="px-4 pt-2 pb-10 flex flex-col" style={{ gap: 20 }}>
 
         {/* Удаление за период */}
         <section>
-          <div className="text-2xs text-text-muted uppercase tracking-wide mb-2">
+          <div
+            className="mb-2"
+            style={{ color: '#888', fontSize: 10, letterSpacing: '1px', fontWeight: 600, textTransform: 'uppercase', paddingLeft: 2 }}
+          >
             Удалить операции за период
           </div>
-          <div className="p-4 bg-bg-secondary border border-border rounded-card space-y-3">
-
-            <div className="flex gap-2 mb-2">
+          <div
+            style={{
+              padding: 14,
+              background: '#141414',
+              border: '0.5px solid #222',
+              borderRadius: 16,
+            }}
+          >
+            <div className="flex mb-2.5" style={{ gap: 5 }}>
               {[
                 { label: 'Этот месяц', range: () => {
                   const d = new Date()
@@ -102,39 +111,68 @@ export const WipeScreen: React.FC<Props> = ({ onClose }) => {
                     setFrom(toInput(s))
                     setTo(toInput(e))
                   }}
-                  className="flex-1 py-1.5 bg-bg-tertiary border-0 rounded text-xs text-text-secondary cursor-pointer"
+                  className="flex-1 border-0 cursor-pointer"
+                  style={{
+                    padding: '6px 0',
+                    background: '#1f1f1f',
+                    borderRadius: 6,
+                    color: '#ccc',
+                    fontSize: 11,
+                  }}
                 >
                   {q.label}
                 </button>
               ))}
             </div>
 
-            <label className="block">
-              <div className="text-2xs text-text-muted mb-1">С даты</div>
+            <label className="block mb-2.5">
+              <div style={{ color: '#666', fontSize: 9, letterSpacing: '0.5px', marginBottom: 4 }}>
+                С ДАТЫ
+              </div>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
                 max={to}
-                className="w-full px-3 py-2.5 bg-bg-tertiary border-0 rounded-btn text-white text-sm box-border"
-                style={{ colorScheme: 'dark' }}
+                className="w-full border-0 box-border"
+                style={{
+                  padding: '10px 13px',
+                  background: '#1f1f1f',
+                  borderRadius: 10,
+                  color: '#fff',
+                  fontSize: 12,
+                  colorScheme: 'dark',
+                }}
               />
             </label>
 
-            <label className="block">
-              <div className="text-2xs text-text-muted mb-1">По дату</div>
+            <label className="block mb-3">
+              <div style={{ color: '#666', fontSize: 9, letterSpacing: '0.5px', marginBottom: 4 }}>
+                ПО ДАТУ
+              </div>
               <input
                 type="date"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
                 min={from}
-                className="w-full px-3 py-2.5 bg-bg-tertiary border-0 rounded-btn text-white text-sm box-border"
-                style={{ colorScheme: 'dark' }}
+                className="w-full border-0 box-border"
+                style={{
+                  padding: '10px 13px',
+                  background: '#1f1f1f',
+                  borderRadius: 10,
+                  color: '#fff',
+                  fontSize: 12,
+                  colorScheme: 'dark',
+                }}
               />
             </label>
 
-            <div className="text-xs text-text-muted pt-1">
-              Попадёт под удаление: <span className={matchCount > 0 ? 'text-accent font-medium' : 'text-text-muted'}>
+            <div className="mb-2.5" style={{ color: '#888', fontSize: 11 }}>
+              Попадёт под удаление:{' '}
+              <span style={{
+                color: matchCount > 0 ? '#ff1744' : '#888',
+                fontWeight: matchCount > 0 ? 600 : 400,
+              }}>
                 {matchCount} операций
               </span>
             </div>
@@ -142,9 +180,15 @@ export const WipeScreen: React.FC<Props> = ({ onClose }) => {
             <button
               onClick={handleWipePeriod}
               disabled={matchCount === 0}
-              className={`w-full py-3 border-0 rounded-btn text-sm font-medium cursor-pointer ${
-                matchCount > 0 ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-faint'
-              }`}
+              className="w-full border-0 cursor-pointer"
+              style={{
+                padding: 11,
+                background: matchCount > 0 ? '#ff1744' : '#1f1f1f',
+                borderRadius: 10,
+                color: matchCount > 0 ? '#fff' : '#555',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
             >
               Удалить {matchCount > 0 ? `(${matchCount})` : ''}
             </button>
@@ -153,15 +197,37 @@ export const WipeScreen: React.FC<Props> = ({ onClose }) => {
 
         {/* Удаление всего */}
         <section>
-          <div className="text-2xs text-text-muted uppercase tracking-wide mb-2">Опасная зона</div>
-          <div className="p-4 bg-bg-secondary border border-accent/30 rounded-card">
-            <div className="text-sm font-medium mb-1">Удалить всё полностью</div>
-            <div className="text-xs text-text-muted mb-3">
+          <div
+            className="mb-2"
+            style={{ color: '#888', fontSize: 10, letterSpacing: '1px', fontWeight: 600, textTransform: 'uppercase', paddingLeft: 2 }}
+          >
+            Опасная зона
+          </div>
+          <div
+            style={{
+              padding: 14,
+              background: '#141414',
+              border: '0.5px solid rgba(255,23,68,0.3)',
+              borderRadius: 16,
+            }}
+          >
+            <div style={{ color: '#fff', fontSize: 13, fontWeight: 500, marginBottom: 2 }}>
+              Удалить всё полностью
+            </div>
+            <div style={{ color: '#888', fontSize: 11, lineHeight: 1.5, marginBottom: 12 }}>
               Счета, операции, категории, долги, настройки. Без возможности восстановить.
             </div>
             <button
               onClick={handleWipeAll}
-              className="w-full py-3 bg-transparent border border-accent rounded-btn text-accent text-sm font-medium cursor-pointer"
+              className="w-full bg-transparent cursor-pointer"
+              style={{
+                padding: 11,
+                border: '1px solid #ff1744',
+                borderRadius: 10,
+                color: '#ff1744',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
             >
               Сбросить приложение
             </button>
