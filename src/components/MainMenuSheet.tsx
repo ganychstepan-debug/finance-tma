@@ -190,7 +190,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.39',
+      subtitle: 'Версия v0.41',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {
@@ -216,46 +216,78 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
 
         {/* Профиль */}
         <div className="flex items-center gap-3 mb-5 px-1">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-14 h-14 rounded-full flex items-center justify-center shrink-0 overflow-hidden relative border-0 cursor-pointer active:scale-95 transition-transform"
-            style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
-            aria-label="Загрузить своё фото"
-          >
-            <span className="text-lg font-medium text-white">{initial}</span>
-            {showPhoto && (
-              <img
-                src={photoUrl!}
-                alt={firstName}
-                onError={() => { if (!customAvatar) setTgImgFailed(true) }}
-                referrerPolicy="no-referrer"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            )}
-            {/* Подсказка на наведении */}
-            <span className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-              <span className="text-xs text-white">📷</span>
-            </span>
-          </button>
+          <div className="relative shrink-0">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden relative border-0 cursor-pointer active:scale-95 transition-transform"
+              style={{
+                background: `linear-gradient(135deg, ${from}, ${to})`,
+                border: '2px solid #0f0f0f',
+                boxShadow: '0 0 0 1px rgba(255,23,68,0.4)',
+              }}
+              aria-label="Загрузить своё фото"
+            >
+              <span className="text-xl font-medium text-white">{initial}</span>
+              {showPhoto && (
+                <img
+                  src={photoUrl!}
+                  alt={firstName}
+                  onError={() => { if (!customAvatar) setTgImgFailed(true) }}
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
+            </button>
+            {/* Камера-бейдж */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bg-accent border-0 cursor-pointer flex items-center justify-center"
+              style={{
+                bottom: -2, right: -2,
+                width: 22, height: 22, borderRadius: '50%',
+                border: '2px solid #0f0f0f',
+              }}
+              aria-label="Сменить фото"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
 
           <div className="flex-1 min-w-0">
-            <div className="text-base font-medium truncate">{firstName}</div>
+            <div style={{ color: '#fff', fontSize: 16, fontWeight: 500 }} className="truncate">{firstName}</div>
             {username && (
-              <div className="text-xs text-text-muted truncate">{username}</div>
+              <div style={{ color: '#666', fontSize: 11 }} className="truncate">{username}</div>
             )}
-            <div className="flex gap-2 mt-1">
+            <div className="flex gap-1.5 mt-1 flex-wrap">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-[11px] text-accent bg-transparent border-0 cursor-pointer p-0"
+                className="bg-transparent border-0 cursor-pointer p-0"
+                style={{ color: '#ff1744', fontSize: 10 }}
               >
                 {customAvatar ? 'Заменить фото' : 'Загрузить фото'}
               </button>
+              {user?.photo_url && !customAvatar && (
+                <>
+                  <span style={{ color: '#444', fontSize: 10 }}>·</span>
+                  <button
+                    onClick={() => { haptic.select(); setTgImgFailed(false) }}
+                    className="bg-transparent border-0 cursor-pointer p-0"
+                    style={{ color: '#888', fontSize: 10 }}
+                  >
+                    Из Telegram
+                  </button>
+                </>
+              )}
               {customAvatar && (
                 <>
-                  <span className="text-text-faint text-[11px]">·</span>
+                  <span style={{ color: '#444', fontSize: 10 }}>·</span>
                   <button
                     onClick={handleRemoveAvatar}
-                    className="text-[11px] text-text-muted bg-transparent border-0 cursor-pointer p-0"
+                    className="bg-transparent border-0 cursor-pointer p-0"
+                    style={{ color: '#888', fontSize: 10 }}
                   >
                     Убрать
                   </button>

@@ -109,15 +109,15 @@ export const AllTransactionsScreen: React.FC<Props> = ({ onClose, onEditTransact
   return (
     <div className="flex flex-col h-full">
       {/* Шапка */}
-      <div className="px-5 pt-3 pb-2 flex justify-between items-center">
+      <div className="px-4 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
-        <div className="text-base font-medium">Все операции</div>
-        <div className="w-12" />
+        <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>Все операции</div>
+        <div style={{ width: 60 }} />
       </div>
 
       {/* Фильтры */}
-      <div className="px-5 pb-2 space-y-2">
-        <div className="flex gap-1.5 scroll-x overflow-x-auto">
+      <div className="px-4 pb-2 space-y-2">
+        <div className="flex gap-1.5 scroll-x overflow-x-auto" style={{ paddingBottom: 2 }}>
           {[
             { id: 'week' as const,     label: 'Неделя' },
             { id: 'month' as const,    label: 'Месяц' },
@@ -128,9 +128,16 @@ export const AllTransactionsScreen: React.FC<Props> = ({ onClose, onEditTransact
             <button
               key={p.id}
               onClick={() => { haptic.select(); setPeriod(p.id) }}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-0 ${
-                period === p.id ? 'bg-accent text-white' : 'bg-bg-secondary text-text-muted border border-border'
-              }`}
+              className="shrink-0 cursor-pointer"
+              style={{
+                padding: '6px 12px',
+                background: period === p.id ? '#ff1744' : '#141414',
+                border: period === p.id ? '0' : '0.5px solid #222',
+                borderRadius: 999,
+                color: period === p.id ? '#fff' : '#888',
+                fontSize: 11,
+                fontWeight: period === p.id ? 600 : 400,
+              }}
             >
               {p.label}
             </button>
@@ -146,42 +153,87 @@ export const AllTransactionsScreen: React.FC<Props> = ({ onClose, onEditTransact
             <button
               key={t.id}
               onClick={() => { haptic.select(); setFilterType(t.id) }}
-              className={`flex-1 py-1.5 rounded text-xs font-medium cursor-pointer border-0 ${
-                filterType === t.id ? 'bg-bg-tertiary text-white' : 'bg-transparent text-text-muted'
-              }`}
+              className="flex-1 cursor-pointer border-0"
+              style={{
+                padding: '7px 0',
+                background: filterType === t.id ? '#1f1f1f' : 'transparent',
+                borderRadius: 8,
+                color: filterType === t.id ? '#fff' : '#888',
+                fontSize: 11,
+                fontWeight: filterType === t.id ? 600 : 400,
+              }}
             >
               {t.label}
             </button>
           ))}
         </div>
 
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск по категории, счёту, комментарию"
-          className="w-full px-3.5 py-2.5 bg-bg-secondary border border-border rounded-btn text-white text-sm box-border"
-        />
+        <div
+          className="flex items-center"
+          style={{
+            padding: '9px 13px',
+            background: '#141414',
+            border: '0.5px solid #222',
+            borderRadius: 10,
+            gap: 8,
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по категории, счёту, комментарию"
+            className="flex-1 bg-transparent border-0 text-white outline-none p-0"
+            style={{ fontSize: 12 }}
+          />
+        </div>
       </div>
 
       {/* Итоги */}
       {totals.count > 0 && (
-        <div className="px-5 py-3 border-y border-border-muted flex justify-between items-center bg-bg-secondary/30">
+        <div
+          className="flex justify-between items-center"
+          style={{
+            margin: '0 -16px',
+            padding: '10px 20px',
+            background: 'rgba(20,20,20,0.4)',
+            borderTop: '0.5px solid #1a1a1a',
+            borderBottom: '0.5px solid #1a1a1a',
+            marginBottom: 12,
+          }}
+        >
           <div>
-            <div className="text-2xs text-text-muted uppercase tracking-wide">Итого</div>
-            <div className={`text-base font-medium ${totals.delta >= 0 ? 'text-success' : 'text-accent'}`}>
+            <div style={{ color: '#666', fontSize: 9, letterSpacing: '1px', fontWeight: 500 }}>ИТОГО</div>
+            <div style={{
+              color: totals.delta >= 0 ? '#00c864' : '#ff1744',
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 1,
+            }}>
               {totals.delta >= 0 ? '+' : '−'}{Math.abs(Math.round(totals.delta)).toLocaleString('ru-RU')} ₽
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-success">+{Math.round(totals.income).toLocaleString('ru-RU')} ₽</div>
-            <div className="text-xs text-accent">−{Math.round(totals.expense).toLocaleString('ru-RU')} ₽</div>
+          <div style={{ textAlign: 'right' }}>
+            {totals.income > 0 && (
+              <div style={{ color: '#00c864', fontSize: 11 }}>
+                +{Math.round(totals.income).toLocaleString('ru-RU')} ₽
+              </div>
+            )}
+            {totals.expense > 0 && (
+              <div style={{ color: '#ff1744', fontSize: 11, marginTop: 1 }}>
+                −{Math.round(totals.expense).toLocaleString('ru-RU')} ₽
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Список */}
-      <div className="flex-1 overflow-y-auto px-5 py-3">
+      <div className="flex-1 overflow-y-auto px-4 py-1">
         {groups.length === 0 ? (
           <div className="py-12 text-center">
             <div className="text-4xl mb-3">🔍</div>
@@ -190,36 +242,77 @@ export const AllTransactionsScreen: React.FC<Props> = ({ onClose, onEditTransact
             </div>
           </div>
         ) : (
-          groups.map((g) => (
-            <div key={g.date} className="mb-4">
-              <div className="flex justify-between items-baseline mb-1.5 px-0.5">
-                <div className="text-xs text-text-muted font-medium uppercase tracking-wide">
-                  {formatDayHeading(g.date)}
+          groups.map((g) => {
+            const dayDelta = g.income - g.expense
+            const hasExpense = g.expense > 0 && g.income === 0
+            return (
+              <div key={g.date} className="mb-3">
+                <div className="flex justify-between items-baseline mb-1.5" style={{ padding: '0 2px' }}>
+                  <span style={{
+                    color: '#888', fontSize: 10, fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: '1px',
+                  }}>
+                    {formatDayHeading(g.date)}
+                  </span>
+                  <span style={{
+                    color: hasExpense || dayDelta < 0 ? '#ff1744' : '#00c864',
+                    fontSize: 10,
+                  }}>
+                    {hasExpense || dayDelta < 0 ? '−' : '+'}
+                    {Math.abs(Math.round(dayDelta)).toLocaleString('ru-RU')} ₽
+                  </span>
                 </div>
-                <div className="text-2xs text-text-muted">
-                  {g.expense > 0 && <span className="text-accent">−{Math.round(g.expense).toLocaleString('ru-RU')} ₽</span>}
-                  {g.income > 0 && g.expense > 0 && <span className="mx-1">·</span>}
-                  {g.income > 0 && <span className="text-success">+{Math.round(g.income).toLocaleString('ru-RU')} ₽</span>}
+                <div
+                  style={{
+                    background: '#141414',
+                    border: '0.5px solid #1a1a1a',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {g.items.map((tx, i) => (
+                    <SwipeableRow
+                      key={tx.id}
+                      onDelete={() => state.deleteTransaction(tx.id)}
+                    >
+                      <div className="px-3">
+                        <TransactionRow
+                          tx={tx}
+                          showDivider={i < g.items.length - 1}
+                          onClick={() => onEditTransaction(tx.id)}
+                        />
+                      </div>
+                    </SwipeableRow>
+                  ))}
                 </div>
               </div>
-              <div className="bg-bg-secondary rounded-card border border-border-muted overflow-hidden">
-                {g.items.map((tx, i) => (
-                  <SwipeableRow
-                    key={tx.id}
-                    onDelete={() => state.deleteTransaction(tx.id)}
-                  >
-                    <div className="px-3">
-                      <TransactionRow
-                        tx={tx}
-                        showDivider={i < g.items.length - 1}
-                        onClick={() => onEditTransaction(tx.id)}
-                      />
-                    </div>
-                  </SwipeableRow>
-                ))}
+            )
+          })
+        )}
+
+        {/* v0.34: подсказка про свайп */}
+        {filtered.length > 0 && (
+          <div
+            className="mx-4 mb-6"
+            style={{
+              marginTop: 20,
+              padding: '12px 14px',
+              background: 'rgba(255,23,68,0.06)',
+              border: '0.5px solid rgba(255,23,68,0.3)',
+              borderRadius: 12,
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>👈</span>
+            <div>
+              <div style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>Свайп влево</div>
+              <div style={{ color: '#888', fontSize: 11, lineHeight: 1.4, marginTop: 2 }}>
+                Потяни строку влево — появится «Удалить». Потяни дальше — сразу подтверждение.
               </div>
             </div>
-          ))
+          </div>
         )}
       </div>
     </div>
