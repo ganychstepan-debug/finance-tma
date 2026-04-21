@@ -59,11 +59,14 @@ const formatTxCard = (tx: PendingTx, daysAgo: number): string => {
   const sign = tx.type === 'expense' ? '−' : '+'
   const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
   const cur = CURRENCY_SIGN[tx.currency] || tx.currency
+  const amountStr = tx.amount > 0 ? tx.amount.toLocaleString('ru-RU') : '?'
   let text = `${emoji} <b>${escapeHtml(tx.categoryGuess)}</b>\n`
-  text += `${sign}${tx.amount.toLocaleString('ru-RU')} ${cur} · ${dateLabel(daysAgo)}`
+  text += `${sign}${amountStr} ${cur} · ${dateLabel(daysAgo)}`
   if (tx.merchant) text += ` · ${escapeHtml(tx.merchant)}`
   if (tx.comment) text += `\n<i>${escapeHtml(tx.comment)}</i>`
-  text += `\n\nДобавить в Сохранёнки?`
+  text += tx.amount > 0
+    ? `\n\nДобавить в Сохранёнки?`
+    : `\n\n⚠ Сумма не распознана — укажи в приложении.`
   return text
 }
 
@@ -97,8 +100,11 @@ export default async function handler(req: Request): Promise<Response> {
     if (!transcript) {
       await sendBotMessage(userId, {
         text:
-          '🎤 Голосовые пока распознаём только у Telegram Premium.\n\n'
-          + 'Пришли текстом, например:\n<code>такси 500</code>',
+          '🎤 Пока мы распознаём только текстовые сообщения.\n\n'
+          + 'Ты можешь:\n'
+          + '• Расшифровать голосовое сам и прислать текстом\n'
+          + '• Или включить режим диктовки на клавиатуре\n\n'
+          + 'Например: <code>такси 500</code>',
       })
       return json({ ok: true })
     }
@@ -121,7 +127,7 @@ export default async function handler(req: Request): Promise<Response> {
       `Привет, <b>${escapeHtml(firstName)}</b>! 👋\n\n`
       + `<b>Сохранёнки</b> — учёт финансов прямо в Telegram.\n\n`
       + `💬 Пиши одну или несколько операций: <i>«кофе 300, такси 500»</i>\n`
-      + `🎤 Или голосом (Telegram Premium)\n`
+      + `🎤 Голосовые — расшифруй сам или включи режим диктовки\n`
       + `📸 В приложении — скан чеков, статистика, цели\n\n`
       + `Жми кнопку 👇`
     await sendBotMessage(userId, { text: greet, withOpenButton: true })
@@ -229,7 +235,8 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     const sign = tx.type === 'expense' ? '−' : '+'
     const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
     const cur = CURRENCY_SIGN[tx.currency] || tx.currency
-    summary += `${emoji} ${sign}${tx.amount.toLocaleString('ru-RU')} ${cur}`
+    const amountStr = tx.amount > 0 ? tx.amount.toLocaleString('ru-RU') : '?'
+    summary += `${emoji} ${sign}${amountStr} ${cur}`
     if (tx.merchant) summary += ` · ${escapeHtml(tx.merchant)}`
     summary += `\n`
   }
