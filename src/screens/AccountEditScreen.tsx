@@ -181,7 +181,7 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
                         borderRadius: 11,
                       }}
                     >
-                      <BankIcon bankId={b.id} size={48} />
+                      <BankIcon bankId={b.id} size={48} customBanks={settings.customBanks} />
                     </div>
                     <span style={{ color: isActive ? '#fff' : '#ddd', fontSize: 10 }}>
                       {b.name}
@@ -234,7 +234,7 @@ export const AccountEditScreen: React.FC<Props> = ({ editId, onClose, onDone }) 
                             borderRadius: 11,
                           }}
                         >
-                          <BankIcon bankId={b.id} size={48} />
+                          <BankIcon bankId={b.id} size={48} customBanks={settings.customBanks} />
                         </button>
                         <span style={{ color: isActive ? '#fff' : '#ddd', fontSize: 10 }}>
                           {b.name}

@@ -614,10 +614,11 @@ export const TransferScreen: React.FC<Props> = ({ onClose, onDone, onSwitchType 
 }
 
 const AccountMini: React.FC<{ account?: Account }> = ({ account }) => {
+  const customBanks = useStore((s) => s.settings.customBanks ?? [])
   if (!account) return null
-  const bank = account.type === 'card' ? bankById(account.bankId) : null
+  const bank = account.type === 'card' ? bankById(account.bankId, customBanks) : null
   const emoji = account.type === 'cash' ? '💵' : account.type === 'deposit' ? '🏦' : '👛'
-  if (bank) return <BankIcon bankId={bank.id} size={28} className="shrink-0" />
+  if (bank) return <BankIcon bankId={bank.id} size={28} className="shrink-0" customBanks={customBanks} />
   return (
     <div className="w-7 h-7 rounded-md bg-bg-tertiary flex items-center justify-center text-sm shrink-0">
       {emoji}

@@ -64,14 +64,10 @@ export const BANKS: BankDef[] = [
   { id: 'other',      name: 'Другой банк', short: '?', color: '#444444' },
 ]
 
-export const bankById = (id?: string): BankDef => {
-  if (id?.startsWith('custom_')) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { useStore } = require('@/store')
-      const cb = useStore.getState().settings.customBanks?.find((b: BankDef) => b.id === id)
-      if (cb) return cb
-    } catch {}
+export const bankById = (id?: string, customBanks?: BankDef[]): BankDef => {
+  if (id?.startsWith('custom_') && customBanks) {
+    const cb = customBanks.find((b) => b.id === id)
+    if (cb) return cb
   }
   return BANKS.find((b) => b.id === id) ?? BANKS[BANKS.length - 1]
 }

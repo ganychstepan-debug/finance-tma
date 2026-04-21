@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 51   // = v0.45 — CTA в потоке, ноль не перекрывается
+export const APP_VERSION = 52   // = v0.46 — фикс require в bankById, передача customBanks
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================

@@ -289,18 +289,17 @@ export const IconCustomBank: React.FC<IconProps & { color: string; short: string
 // ============================================================================
 // Роутер по id
 // ============================================================================
-export const BankIcon: React.FC<{ bankId?: string; size?: number; className?: string }> = ({
-  bankId, size, className,
+export const BankIcon: React.FC<{
+  bankId?: string
+  size?: number
+  className?: string
+  customBanks?: Array<{ id: string; color: string; short: string }>
+}> = ({
+  bankId, size, className, customBanks,
 }) => {
-  // Кастомные банки ищем в settings через ленивый импорт store
   if (bankId?.startsWith('custom_')) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { useStore } = require('@/store')
-      const state = useStore.getState()
-      const cb = state.settings.customBanks?.find((b: { id: string }) => b.id === bankId)
-      if (cb) return <IconCustomBank size={size} className={className} color={cb.color} short={cb.short} />
-    } catch {}
+    const cb = customBanks?.find((b) => b.id === bankId)
+    if (cb) return <IconCustomBank size={size} className={className} color={cb.color} short={cb.short} />
     return <IconOtherBank size={size} className={className} />
   }
   switch (bankId) {

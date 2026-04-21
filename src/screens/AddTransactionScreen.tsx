@@ -248,7 +248,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         >
           {visibleAccounts.map((a) => {
             const isActive = a.id === accountId
-            const bank = a.type === 'card' ? bankById(a.bankId) : null
+            const bank = a.type === 'card' ? bankById(a.bankId, state.settings.customBanks) : null
             const bankColor = bank?.color || (a.type === 'cash' ? '#2a2a2a' : '#1f1f1f')
             const isLight = ['#FFDD2D', '#FEE600', '#FFCC00'].includes(bankColor.toUpperCase())
             const textColor = isLight ? '#000' : '#fff'

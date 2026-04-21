@@ -112,7 +112,7 @@ export const AccountsScreen: React.FC<Props> = ({ onClose, onAddNew, onEdit }) =
                 </div>
                 <div className="space-y-2">
                   {items.map((a) => {
-                    const bank = a.type === 'card' ? bankById(a.bankId) : null
+                    const bank = a.type === 'card' ? bankById(a.bankId, settings.customBanks) : null
                     const emoji = a.type === 'cash' ? '💵' : a.type === 'deposit' ? '🏦' : '👛'
                     return (
                       <div
@@ -124,7 +124,7 @@ export const AccountsScreen: React.FC<Props> = ({ onClose, onAddNew, onEdit }) =
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
                         >
                           {bank ? (
-                            <BankIcon bankId={bank.id} size={40} className="shrink-0" />
+                            <BankIcon bankId={bank.id} size={40} className="shrink-0" customBanks={settings.customBanks} />
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center text-lg shrink-0">
                               {emoji}

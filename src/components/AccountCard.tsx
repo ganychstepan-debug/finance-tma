@@ -1,6 +1,7 @@
 import type { Account } from '@/types'
 import { bankById } from '@/lib/icons'
 import { formatMoney } from '@/lib/formatters'
+import { useStore } from '@/store'
 
 interface Props {
   account: Account
@@ -9,7 +10,8 @@ interface Props {
 
 // v0.34: карточка счёта 128px, компактная
 export const AccountCard: React.FC<Props> = ({ account, onClick }) => {
-  const bank = account.type === 'card' ? bankById(account.bankId) : null
+  const customBanks = useStore((s) => s.settings.customBanks ?? [])
+  const bank = account.type === 'card' ? bankById(account.bankId, customBanks) : null
   const isActive = account.includeInTotal
   const isHidden = !isActive
 
