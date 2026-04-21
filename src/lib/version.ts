@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 59   // = v0.53 — 4.11 Changelog + 4.12 Referral под макет
+export const APP_VERSION = 60   // = v0.54 — кнопка Чек в стиле BackButton
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================
