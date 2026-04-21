@@ -9,6 +9,7 @@ import { haptic } from '@/lib/telegram'
 import { fetchPendingTxs, removePendingTx, type BotPendingTx } from '@/lib/botPending'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { currencySign } from '@/lib/formatters'
+import { convert, getRates } from '@/lib/fx'
 
 // Сопоставление категории от бота с категорией пользователя по имени/эмодзи
 const matchCategory = (
@@ -46,6 +47,9 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
 
   useEffect(() => {
     fetchPendingTxs().then(async (all) => {
+      // v0.98: подгружаем курсы ЦБ для конверсии валюты операций из бота
+      await getRates().catch(() => {})
+
       // v0.58: авто-подтверждённые (нажал «Добавить все» в боте) — материализуем сразу без UI
       // v0.83: но только если amount > 0. Нулевые — всегда в ручной поток.
       const auto = all.filter((t) => t.autoConfirmed && t.amount > 0)
@@ -57,14 +61,28 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
         const fallback = categories.filter((c) => c.type === t.type)[0]?.id
         const catId = matched ?? fallback
         if (!catId) continue
+
+        // v0.98: если валюта операции отличается от валюты счёта — конвертируем
+        const txCurrency = (t.currency as any) || defaultAccount.currency
+        let finalAmount = t.amount
+        let finalCurrency = defaultAccount.currency
+        let commentSuffix = ''
+        if (txCurrency !== defaultAccount.currency) {
+          const converted = convert(t.amount, txCurrency, defaultAccount.currency)
+          if (converted > 0) {
+            finalAmount = Math.round(converted * 100) / 100
+            commentSuffix = ` (${t.amount} ${txCurrency} → ${finalAmount.toFixed(2)} ${defaultAccount.currency})`
+          }
+        }
+
         addTransaction({
           type: t.type,
-          amount: t.amount,
-          currency: (t.currency as any) || defaultAccount.currency,
+          amount: finalAmount,
+          currency: finalCurrency,
           accountId: defaultAccount.id,
           categoryId: catId,
           date: t.date,
-          comment: t.comment || t.merchant || undefined,
+          comment: (t.comment || t.merchant || '') + commentSuffix || undefined,
         })
         await removePendingTx(t.id)
       }
@@ -116,14 +134,25 @@ export const BotPendingSheet: React.FC<Props> = ({ onClose }) => {
     if (!canSave || !account || !categoryId) return
     setSaving(true)
     haptic.success()
+    // v0.98: конверсия валюты если отличается от счёта
+    const txCurrency = (current.currency as any) || account.currency
+    let finalAmount = effectiveAmount
+    let commentSuffix = ''
+    if (txCurrency !== account.currency) {
+      const converted = convert(effectiveAmount, txCurrency, account.currency)
+      if (converted > 0) {
+        finalAmount = Math.round(converted * 100) / 100
+        commentSuffix = ` (${effectiveAmount} ${txCurrency} → ${finalAmount.toFixed(2)} ${account.currency})`
+      }
+    }
     addTransaction({
       type: current.type,
-      amount: effectiveAmount,
-      currency: (current.currency as any) || account.currency,
+      amount: finalAmount,
+      currency: account.currency,
       accountId: account.id,
       categoryId,
       date: current.date,
-      comment: current.comment || (current.merchant ? current.merchant : undefined),
+      comment: (current.comment || current.merchant || '') + commentSuffix || undefined,
     })
     await removePendingTx(current.id)
     const next = items.filter((_, i) => i !== activeIdx)
