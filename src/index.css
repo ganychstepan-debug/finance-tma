@@ -76,21 +76,30 @@ input[type=number]::-webkit-outer-spin-button {
 @keyframes fabGlow {
   0%, 100% {
     box-shadow:
-      0 6px 20px rgba(var(--c-accent-glow-strong), 0.75),
-      0 0 24px rgba(var(--c-accent-glow-strong), 0.4);
+      0 0 0 6px rgba(255, 23, 68, 0.15),
+      0 0 24px 4px rgba(255, 23, 68, 0.6),
+      0 6px 20px rgba(255, 23, 68, 0.7),
+      0 0 48px 12px rgba(255, 23, 68, 0.35);
   }
   50% {
     box-shadow:
-      0 10px 32px rgba(var(--c-accent-glow-strong), 1),
-      0 0 40px rgba(var(--c-accent-glow-strong), 0.6);
+      0 0 0 10px rgba(255, 23, 68, 0.2),
+      0 0 40px 8px rgba(255, 23, 68, 0.9),
+      0 10px 32px rgba(255, 23, 68, 1),
+      0 0 70px 18px rgba(255, 23, 68, 0.55);
   }
 }
 
 .fab-outer {
   animation: fabFloat 3.2s ease-in-out infinite;
+  /* Обеспечиваем, чтобы свечение не обрезалось */
+  position: relative;
+  overflow: visible;
 }
 .fab-inner {
   animation: fabGlow 2.4s ease-in-out infinite;
+  position: relative;
+  overflow: visible;
 }
 .fab-inner:active {
   animation: none;

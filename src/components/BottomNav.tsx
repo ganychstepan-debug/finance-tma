@@ -87,18 +87,20 @@ export const BottomNav: React.FC<Props> = ({ active, onChange, onAddTap }) => {
       style={{
         paddingTop: 8,
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+        overflow: 'visible',
       }}
     >
       <TabButton tab={home}       active={active === 'home'}       onClick={() => go('home')} />
       <TabButton tab={categories} active={active === 'categories'} onClick={() => go('categories')} />
 
       {/* Центральная кнопка "+" — FAB с двухслойной анимацией */}
-      <div className="flex-1 flex justify-center">
-        <div className="fab-outer relative">
+      <div className="flex-1 flex justify-center" style={{ overflow: 'visible' }}>
+        <div className="fab-outer" style={{ overflow: 'visible', zIndex: 30 }}>
           <button
             onClick={() => { haptic.medium(); onAddTap() }}
             className="fab-inner w-16 h-16 rounded-full bg-accent border-0 cursor-pointer flex items-center justify-center text-white"
             aria-label="Добавить"
+            style={{ overflow: 'visible' }}
           >
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
