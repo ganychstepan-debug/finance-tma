@@ -213,12 +213,13 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         }}>
           Сумма
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{
               color: type === 'expense' ? '#ff1744' : '#00c864',
               fontSize: 36, fontWeight: 300, lineHeight: 1,
-              marginRight: 2,
+              marginRight: 4,
+              display: 'inline-block',
             }}>
               {type === 'expense' ? '−' : '+'}
             </span>
