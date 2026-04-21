@@ -22,6 +22,9 @@ import {
 const BOT_TOKEN = (typeof process !== 'undefined' ? process.env?.BOT_TOKEN : undefined) ?? ''
 const APP_URL = (typeof process !== 'undefined' ? process.env?.APP_URL : undefined)
   ?? 'https://t.me/savemoney_gs_bot/app'
+// v0.85: прямой HTTPS URL Vercel-деплоя — для web_app-кнопок которые гарантированно открывают мини-апп
+const WEBAPP_URL = (typeof process !== 'undefined' ? process.env?.WEBAPP_URL : undefined)
+  ?? 'https://finance-tma-nine.vercel.app'
 
 // ---------- Telegram types (минимум) ----------
 interface TgMessage {
@@ -41,7 +44,12 @@ interface TgUpdate {
   message?: TgMessage
   callback_query?: TgCallback
 }
-type InlineButton = { text: string; callback_data?: string; url?: string }
+type InlineButton = {
+  text: string
+  callback_data?: string
+  url?: string
+  web_app?: { url: string }
+}
 type InlineKeyboard = InlineButton[][]
 
 // ---------- Helpers ----------
@@ -148,7 +156,7 @@ const handleStart = async (userId: string, firstName: string) => {
     + `Жми кнопку 👇`
   await sendBotMessage(userId, {
     text: greet,
-    inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
+    inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', web_app: { url: WEBAPP_URL } }]],
   })
 }
 
@@ -298,8 +306,12 @@ const handleCallback = async (cb: TgCallback) => {
       console.error('confirm error:', (e as Error).message)
     }
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Добавлено. Открой приложение — операция появится в списке.',
+      text: '✅ Добавлено.',
     }).catch(() => {})
+    await sendBotMessage(userId, {
+      text: 'Открой приложение — операция появится в списке.',
+      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', web_app: { url: WEBAPP_URL } }]],
+    })
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
   }
@@ -321,9 +333,13 @@ const handleCallback = async (cb: TgCallback) => {
     await editBotMessage(msg.chat.id, msg.message_id, {
       text:
         n > 0
-          ? `✅ Подтверждено <b>${n}</b> операций.\n\nОткрой приложение — появятся в списке.`
-          : '✅ Уже подтверждено. Открой приложение — появятся.',
+          ? `✅ Подтверждено <b>${n}</b> операций.`
+          : '✅ Уже подтверждено.',
     }).catch(() => {})
+    await sendBotMessage(userId, {
+      text: 'Открой приложение — появятся в списке.',
+      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', web_app: { url: WEBAPP_URL } }]],
+    })
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
   }
@@ -364,8 +380,12 @@ const handleCallback = async (cb: TgCallback) => {
       }
     } catch {}
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Добавлено. Открой приложение — операция появится в списке.',
+      text: '✅ Добавлено.',
     }).catch(() => {})
+    await sendBotMessage(userId, {
+      text: 'Открой приложение — операция появится в списке.',
+      inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', web_app: { url: WEBAPP_URL } }]],
+    })
     await answerCallback(cb.id, 'Добавлено').catch(() => {})
     return json({ ok: true })
   }
