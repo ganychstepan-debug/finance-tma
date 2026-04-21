@@ -3,6 +3,7 @@ import { useStore } from '@/store'
 import { BackButton } from '@/components/BackButton'
 import { parseImportCSV, type ImportRow, emptyTemplateCSV, downloadFile } from '@/lib/csv'
 import { parseImportAI } from '@/lib/ai'
+import { iconByName, bankIdByName } from '@/lib/icons'
 import { haptic } from '@/lib/telegram'
 
 interface Props { onClose: () => void }
@@ -111,68 +112,110 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
       let addedTx = 0
       let createdAccounts = 0
       let createdCategories = 0
+      let skippedRows = 0
+      const errorMessages: string[] = []
 
-      for (const row of rows) {
-        // Найти или создать счёт
-        const accKey = row.accountName.toLowerCase().trim()
-        let acc = accByName.get(accKey)
-        if (!acc) {
-          acc = state.addAccount({
-            name: row.accountName,
-            type: 'card',
-            balance: 0,
-            currency: row.currency as any,
-            icon: 'other',
-            includeInTotal: true,
-            archived: false,
-          })
-          accByName.set(accKey, acc)
-          createdAccounts++
-        }
-
-        // Для transfer — категория не нужна
-        let categoryId: string | undefined
-        if (row.type !== 'transfer' && row.categoryName) {
-          const catKey = `${row.type}:${row.categoryName.toLowerCase().trim()}`
-          let cat = catByName.get(catKey)
-          if (!cat) {
-            cat = state.addCategory({
-              name: row.categoryName,
-              type: row.type as 'expense' | 'income',
-              icon: 'other',
-              color: '#ff1744',
-              budgetMonthly: null,
-              isCustom: true,
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        try {
+          // v0.94: имя счёта может быть пустым (CoinKeeper transfer, etc)
+          const accName = (row.accountName || '').trim() || 'Импорт'
+          const accKey = accName.toLowerCase()
+          let acc = accByName.get(accKey)
+          if (!acc) {
+            // v0.94: пытаемся подобрать банк по названию
+            const bankId = bankIdByName(accName)
+            acc = state.addAccount({
+              name: accName,
+              type: 'card',
+              bankId,                     // v0.94: иконка банка по корню названия
+              balance: 0,
+              currency: row.currency as any,
+              icon: 'card',
+              includeInTotal: true,
               archived: false,
-              sortOrder: 999,
             })
-            catByName.set(catKey, cat)
-            createdCategories++
+            accByName.set(accKey, acc)
+            createdAccounts++
           }
-          categoryId = cat.id
+
+          let categoryId: string | undefined
+          if (row.type !== 'transfer' && row.categoryName) {
+            const catKey = `${row.type}:${row.categoryName.toLowerCase().trim()}`
+            let cat = catByName.get(catKey)
+            if (!cat) {
+              // v0.94: подбор иконки по имени категории
+              const iconId = iconByName(row.categoryName)
+              cat = state.addCategory({
+                name: row.categoryName,
+                type: row.type as 'expense' | 'income',
+                icon: iconId,
+                color: '#ff1744',
+                budgetMonthly: null,
+                isCustom: true,
+                archived: false,
+                sortOrder: 999,
+              })
+              catByName.set(catKey, cat)
+              createdCategories++
+            }
+            categoryId = cat.id
+          }
+
+          // Для переводов пока скипаем (нет второго счёта в импорте)
+          if (row.type === 'transfer') {
+            skippedRows++
+            continue
+          }
+
+          // v0.94: для expense/income категория обязательна — иначе создаём «Без категории»
+          if (!categoryId) {
+            const fallbackName = row.type === 'expense' ? 'Без категории' : 'Прочие доходы'
+            const fallbackKey = `${row.type}:${fallbackName.toLowerCase()}`
+            let fallCat = catByName.get(fallbackKey)
+            if (!fallCat) {
+              fallCat = state.addCategory({
+                name: fallbackName,
+                type: row.type as 'expense' | 'income',
+                icon: 'other',
+                color: '#ff1744',
+                budgetMonthly: null,
+                isCustom: true,
+                archived: false,
+                sortOrder: 999,
+              })
+              catByName.set(fallbackKey, fallCat)
+              createdCategories++
+            }
+            categoryId = fallCat.id
+          }
+
+          state.addTransaction({
+            type: row.type as 'expense' | 'income',
+            amount: row.amount,
+            currency: row.currency as any,
+            accountId: acc.id,
+            categoryId,
+            date: row.date,
+            comment: row.comment,
+          })
+          addedTx++
+        } catch (rowErr) {
+          errorMessages.push(`Строка ${i + 1}: ${(rowErr as Error).message}`)
         }
-
-        // Для переводов второй счёт пока не обрабатываем (минимум полей в CSV)
-        if (row.type === 'transfer') continue
-
-        state.addTransaction({
-          type: row.type as 'expense' | 'income',
-          amount: row.amount,
-          currency: row.currency as any,
-          accountId: acc.id,
-          categoryId: categoryId!,
-          date: row.date,
-          comment: row.comment,
-        })
-        addedTx++
       }
 
       haptic.success()
+      const errSummary = errorMessages.length > 0
+        ? `\n\n⚠ Ошибок: ${errorMessages.length}\n${errorMessages.slice(0, 3).join('\n')}`
+        : ''
       alert(
         `Готово!\n\n` +
         `Добавлено операций: ${addedTx}\n` +
         (createdAccounts > 0 ? `Создано счетов: ${createdAccounts}\n` : '') +
-        (createdCategories > 0 ? `Создано категорий: ${createdCategories}` : '')
+        (createdCategories > 0 ? `Создано категорий: ${createdCategories}\n` : '') +
+        (skippedRows > 0 ? `Пропущено переводов: ${skippedRows}` : '') +
+        errSummary
       )
       onClose()
     } catch (e) {
@@ -219,7 +262,7 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
             Загрузить историю
           </div>
           <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5, padding: '0 16px' }}>
-            Дзен-мани · CoinKeeper · Monefy · YNAB · 1Money · Money Lover · Money Manager · любой CSV
+            Дзен-мани · CoinKeeper — нативно. Остальные форматы — через ИИ
           </div>
         </div>
 

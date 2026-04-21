@@ -68,18 +68,26 @@ export const HomeScreen: React.FC<Props> = ({
   const monthDelta = monthIncome - monthSpend
 
   const visibleAccounts = state.accounts.filter((a) => !a.archived && a.type !== 'goal')
-  // v0.68: Операции за последние 7 дней — от новых к старым
+  // v0.94: операции за 7 дней; если их <5, показываем 20 последних (после импорта старых)
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-  const recentTx = state.transactions
+  const weekTx = state.transactions
     .filter((t) => new Date(t.date).getTime() >= weekAgo)
     .slice()
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const recentTx = weekTx.length >= 5
+    ? weekTx
+    : state.transactions
+        .slice()
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 20)
 
   const totalStr = Math.round(total).toLocaleString('ru-RU')
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto pb-4">
-      <HomeHeader month={month} onMonthChange={setMonth} onMenuOpen={onMenuOpen} onOpenCurrency={onOpenCurrency} />
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* v0.94: Верхний фиксированный блок — header, баланс, счета, цели */}
+      <div className="flex-shrink-0">
+        <HomeHeader month={month} onMonthChange={setMonth} onMenuOpen={onMenuOpen} onOpenCurrency={onOpenCurrency} />
 
       <div className="px-5 pt-3 pb-0" style={{ marginBottom: 10 }}>
         <div className="text-2xs text-text-muted" style={{ letterSpacing: '1.5px', fontWeight: 500 }}>
@@ -241,10 +249,15 @@ export const HomeScreen: React.FC<Props> = ({
           </div>
         )}
       </div>
+      </div>
+      {/* Конец фиксированного верхнего блока */}
+
+      {/* v0.94: Скроллящаяся секция только для операций */}
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4">
 
       <div className="px-5 mb-2 flex justify-between items-baseline">
         <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
-          {recentTx.length > 0 ? 'ЗА НЕДЕЛЮ' : 'ПОСЛЕДНИЕ ОПЕРАЦИИ'}
+          {recentTx.length === 0 ? 'ПОСЛЕДНИЕ ОПЕРАЦИИ' : weekTx.length >= 5 ? 'ЗА НЕДЕЛЮ' : 'ПОСЛЕДНИЕ ОПЕРАЦИИ'}
         </div>
         {recentTx.length > 0 && (
           <button
@@ -308,6 +321,8 @@ export const HomeScreen: React.FC<Props> = ({
           </>
         )}
       </div>
+      </div>
+      {/* конец скролл-контейнера операций */}
     </div>
   )
 }
