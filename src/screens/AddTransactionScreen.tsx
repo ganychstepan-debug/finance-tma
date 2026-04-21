@@ -123,25 +123,8 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
           byCategory: result.byCategory,
           items: result.items || [],
         })
-      } else if (result.amount > 0 && accountId) {
-        // v0.92: одна категория — автоматически сохраняем и закрываем
-        const fallbackCategoryId = visibleCategories[0]?.id
-        const catId = result.categoryId || fallbackCategoryId
-        if (catId) {
-          addTransaction({
-            type: 'expense' as TransactionType,
-            amount: result.amount,
-            currency: account?.currency ?? 'RUB',
-            accountId,
-            categoryId: catId,
-            date: txDate.toISOString(),
-            comment: itemsText || result.merchant || undefined,
-          })
-          haptic.success()
-          onDone()
-          return
-        }
       }
+      // v0.95: НЕ автосохраняем — юзер подтверждает кнопкой «Подтвердить»
 
       haptic.success()
     } catch (err) {
