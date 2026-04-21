@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '@/store'
-import { haptic } from '@/lib/telegram'
+import { haptic, showPopup } from '@/lib/telegram'
 import { BackButton } from '@/components/BackButton'
 
 interface Props {
@@ -32,32 +32,60 @@ export const WipeScreen: React.FC<Props> = ({ onClose }) => {
     return d >= fromT && d <= toT
   }).length
 
-  const handleWipePeriod = () => {
+  const handleWipePeriod = async () => {
     if (matchCount === 0) return
-    const ok = window.confirm(
-      `Удалить ${matchCount} операций за период ${from} — ${to}?\n\nБалансы счетов будут пересчитаны. Категории и долги не тронутся.`
-    )
-    if (!ok) return
+    const pressed = await showPopup({
+      title: `Удалить ${matchCount} ${pluralizeOps(matchCount)}?`,
+      message: `За период ${from} — ${to}. Балансы счетов пересчитаются. Категории и долги не тронутся.`,
+      buttons: [
+        { id: 'cancel', type: 'cancel', text: 'Отмена' },
+        { id: 'confirm', type: 'destructive', text: 'Удалить' },
+      ],
+    })
+    if (pressed !== 'confirm') return
     haptic.warning()
     const removed = wipeTransactions(
       new Date(from + 'T00:00:00').toISOString(),
       new Date(to + 'T23:59:59').toISOString()
     )
-    alert(`Удалено операций: ${removed}`)
+    await showPopup({
+      title: 'Готово',
+      message: `Удалено операций: ${removed}`,
+      buttons: [{ type: 'ok', text: 'OK' }],
+    })
     onClose()
   }
 
-  const handleWipeAll = () => {
-    const ok1 = window.confirm(
-      'ВНИМАНИЕ! Это удалит ВСЁ:\n\n' +
-      '• Все счета\n• Все транзакции\n• Все долги\n• Свои категории и бюджеты\n• Настройки\n\nДействие необратимо. Продолжить?'
-    )
-    if (!ok1) return
-    const ok2 = window.confirm('Точно удалить всё? Данные не восстановить.')
-    if (!ok2) return
+  const handleWipeAll = async () => {
+    const p1 = await showPopup({
+      title: 'Удалить всё?',
+      message: 'Счета, транзакции, долги, свои категории и настройки — всё будет стёрто. Действие необратимо.',
+      buttons: [
+        { id: 'cancel', type: 'cancel', text: 'Отмена' },
+        { id: 'next', type: 'destructive', text: 'Продолжить' },
+      ],
+    })
+    if (p1 !== 'next') return
+    const p2 = await showPopup({
+      title: 'Точно удалить всё?',
+      message: 'Данные не восстановить.',
+      buttons: [
+        { id: 'cancel', type: 'cancel', text: 'Отмена' },
+        { id: 'wipe', type: 'destructive', text: 'Удалить всё' },
+      ],
+    })
+    if (p2 !== 'wipe') return
     haptic.error()
     wipeAll()
     onClose()
+  }
+
+  const pluralizeOps = (n: number): string => {
+    const m10 = n % 10
+    const m100 = n % 100
+    if (m10 === 1 && m100 !== 11) return 'операцию'
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'операции'
+    return 'операций'
   }
 
   return (

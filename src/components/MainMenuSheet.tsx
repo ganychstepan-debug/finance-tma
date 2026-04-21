@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/store'
-import { getUser, haptic, openTelegramLink } from '@/lib/telegram'
+import { getUser, haptic, openTelegramLink, requestWriteAccess, requestContact, showPopup, shareViaTelegram } from '@/lib/telegram'
 import { gradientForUser, getCustomAvatar, setCustomAvatar, removeCustomAvatar, processAvatarFile } from '@/lib/avatar'
 import { APP_CHANNEL_USERNAME, APP_CHANNEL_URL } from '@/lib/version'
 
@@ -77,19 +77,55 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
   }, [])
 
   const handleRestore = async () => {
-    const ok = window.confirm(
-      'Восстановить данные из Telegram-облака?\n\n' +
-      'Текущие локальные данные будут заменены на те, что хранятся в облаке.\n\n' +
-      'Используй эту кнопку если после чистки кэша или переустановки данные пропали.'
-    )
-    if (!ok) return
+    const pressed = await showPopup({
+      title: 'Восстановить из облака?',
+      message: 'Текущие локальные данные будут заменены на те, что хранятся в Telegram-облаке. Используй если данные пропали после переустановки.',
+      buttons: [
+        { id: 'cancel', type: 'cancel', text: 'Отмена' },
+        { id: 'restore', type: 'destructive', text: 'Восстановить' },
+      ],
+    })
+    if (pressed !== 'restore') return
     haptic.medium()
     const result = await state.restoreFromCloud()
     if (result.restored) {
-      alert(`Восстановлено!\nТранзакций: ${result.transactions}`)
+      await showPopup({
+        title: 'Готово',
+        message: `Восстановлено транзакций: ${result.transactions}`,
+        buttons: [{ type: 'ok', text: 'OK' }],
+      })
       onClose()
     } else {
-      alert('В облаке нет данных для восстановления.\n\nВозможно, это первый запуск — данные начнут синхронизироваться автоматически.')
+      await showPopup({
+        title: 'В облаке нет данных',
+        message: 'Возможно, это первый запуск — данные начнут синхронизироваться автоматически.',
+        buttons: [{ type: 'ok', text: 'OK' }],
+      })
+    }
+  }
+
+  // v0.77: Отслеживаем статус уведомлений в localStorage
+  const [writeAccessGranted, setWriteAccessGranted] = useState<boolean>(() => {
+    try { return localStorage.getItem('bot_write_access') === '1' } catch { return false }
+  })
+  const handleEnableNotifications = async () => {
+    haptic.medium()
+    const granted = await requestWriteAccess()
+    if (granted) {
+      try { localStorage.setItem('bot_write_access', '1') } catch {}
+      setWriteAccessGranted(true)
+      haptic.success()
+    } else {
+      haptic.error()
+    }
+  }
+
+  const handleShareContact = async () => {
+    haptic.medium()
+    const shared = await requestContact()
+    if (shared) {
+      try { localStorage.setItem('bot_contact_shared', '1') } catch {}
+      haptic.success()
     }
   }
 
@@ -111,6 +147,21 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       onClick: () => {
         haptic.select()
         openTelegramLink(APP_CHANNEL_URL)
+        onClose()
+      },
+      highlight: true,
+    },
+    {
+      id: 'share',
+      icon: '🔗',
+      title: 'Поделиться приложением',
+      subtitle: 'Отправить друзьям в Telegram',
+      onClick: () => {
+        haptic.select()
+        shareViaTelegram(
+          'https://t.me/savemoney_gs_bot',
+          'Сохранёнки — учёт финансов прямо в Telegram. Пишешь боту что потратил, ИИ распознаёт. Попробуй!'
+        )
         onClose()
       },
       highlight: true,
@@ -138,6 +189,14 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       title: 'Цели накопления',
       onClick: () => { haptic.select(); onOpenGoals() },
       rightText: String((state.goals ?? []).filter((g) => !g.archived).length || ''),
+    },
+    {
+      id: 'notifications',
+      icon: '🔔',
+      title: writeAccessGranted ? 'Уведомления от бота' : 'Включить уведомления',
+      subtitle: writeAccessGranted ? 'Напоминания и итоги недели' : 'Разрешить боту писать в личку',
+      onClick: handleEnableNotifications,
+      rightText: writeAccessGranted ? '✓' : undefined,
     },
   ]
 
@@ -170,7 +229,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.76',
+      subtitle: 'Версия v0.77',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {
