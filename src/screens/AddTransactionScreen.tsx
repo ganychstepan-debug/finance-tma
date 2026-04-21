@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useStore, selectCategoriesByUsage } from '@/store'
+import { bankById } from '@/lib/icons'
 import { NumPad } from '@/components/NumPad'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { BackButton } from '@/components/BackButton'
@@ -202,23 +203,75 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         </div>
       )}
 
-      {/* Сумма */}
-      <div className="px-5 pt-4 pb-3 text-center">
-        <div className="text-[48px] font-light tracking-tight leading-none inline-flex items-baseline justify-center gap-2">
-          <span className={`${type === 'expense' ? 'text-accent' : 'text-success'} inline-block`}>
-            {type === 'expense' ? '−' : '+'}
-          </span>
-          <span className={amountNum === 0 ? 'text-text-muted' : ''}>{amount}</span>
-          <span className="text-text-muted text-[32px]">{account?.currency === 'RUB' ? '₽' : account?.currency}</span>
+      {/* v0.34: Сумма под макет — 52px, легкая */}
+      <div className="px-5 pt-4 pb-3">
+        <div style={{
+          color: '#666', fontSize: 10, letterSpacing: '1.3px',
+          fontWeight: 500, textTransform: 'uppercase', marginBottom: 4,
+        }}>
+          Сумма
         </div>
-        <button
-          onClick={() => { haptic.select(); setShowAccountPicker(true) }}
-          className="inline-flex items-center gap-1.5 mt-1.5 text-xs text-text-muted bg-transparent border-0 cursor-pointer"
-        >
-          <span>{type === 'expense' ? 'из' : 'на'}</span>
-          <span className="text-accent">{account?.name ?? '—'}</span>
-          <span>▾</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{
+            color: type === 'expense' ? '#ff1744' : '#00c864',
+            fontSize: 52, fontWeight: 300, letterSpacing: '-0.04em', lineHeight: 1,
+          }}>
+            {type === 'expense' ? '−' : '+'}{amount}
+          </span>
+          <span style={{ color: '#666', fontSize: 22, fontWeight: 400 }}>
+            {account?.currency === 'RUB' ? '₽' : account?.currency}
+          </span>
+        </div>
+      </div>
+
+      {/* v0.34: Счёт — горизонтальные чипы */}
+      <div className="px-4 pb-1.5">
+        <div style={{
+          color: '#666', fontSize: 10, letterSpacing: '1.3px',
+          fontWeight: 500, textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4,
+        }}>
+          Счёт
+        </div>
+        <div className="flex gap-1.5 scroll-x pb-0.5">
+          {visibleAccounts.map((a) => {
+            const isActive = a.id === accountId
+            const bank = a.type === 'card' ? bankById(a.bankId) : null
+            const bankColor = bank?.color || (a.type === 'cash' ? '#2a2a2a' : '#1f1f1f')
+            const isLight = ['#FFDD2D', '#FEE600', '#FFCC00'].includes(bankColor.toUpperCase())
+            const textColor = isLight ? '#000' : '#fff'
+            const letter = bank?.short || (a.type === 'cash' ? '₽' : (a.name.charAt(0) || '?').toUpperCase())
+            return (
+              <button
+                key={a.id}
+                onClick={() => { haptic.select(); setAccountId(a.id) }}
+                className="cursor-pointer"
+                style={{
+                  padding: '8px 13px',
+                  background: isActive ? '#ff1744' : '#141414',
+                  color: isActive ? '#fff' : '#aaa',
+                  fontSize: 12,
+                  fontWeight: isActive ? 600 : 500,
+                  borderRadius: 10,
+                  border: 0,
+                  whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: 18, height: 18, background: bankColor,
+                    borderRadius: 5, fontSize: 10, fontWeight: 800, color: textColor,
+                  }}
+                >
+                  {letter}
+                </div>
+                {a.name}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Категории */}
@@ -292,7 +345,7 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
               : 'bg-bg-tertiary text-text-faint border-0'
           }`}
         >
-          {canSave ? 'Готово' : 'Введи сумму'}
+          {canSave ? 'Подтвердить' : 'Введи сумму'}
         </button>
       </div>
 

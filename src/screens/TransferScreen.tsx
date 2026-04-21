@@ -469,7 +469,7 @@ export const TransferScreen: React.FC<Props> = ({ onClose, onDone, onSwitchType 
               : 'bg-bg-tertiary text-text-faint border-0'
           }`}
         >
-          {canSave ? 'Готово' : 'Заполни сумму'}
+          {canSave ? 'Подтвердить' : 'Заполни сумму'}
         </button>
       </div>
 
