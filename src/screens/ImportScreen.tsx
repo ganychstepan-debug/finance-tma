@@ -313,33 +313,108 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
           </div>
         )}
 
-        {/* Ошибки */}
-        {errors.length > 0 && (
+        {/* v0.75: 5.07 Карточка-сводка ошибок — появляется если есть и успешные строки и ошибки */}
+        {rows && rows.length > 0 && errors.length > 0 && (
           <div
             style={{
-              padding: 12,
-              background: 'rgba(255,23,68,0.05)',
-              border: '0.5px solid rgba(255,23,68,0.2)',
-              borderRadius: 12,
+              padding: 16,
+              background: 'linear-gradient(135deg, rgba(255,23,68,0.08), rgba(255,23,68,0.02))',
+              border: '0.5px solid rgba(255,23,68,0.3)',
+              borderRadius: 16,
               marginBottom: 14,
             }}
           >
-            <div style={{ color: '#ff1744', fontSize: 11, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Ошибки ({errors.length})
-            </div>
-            <div style={{ maxHeight: 140, overflowY: 'auto' }}>
-              {errors.slice(0, 15).map((err, i) => (
-                <div key={i} style={{ color: '#ddd', fontSize: 11, lineHeight: 1.5, marginBottom: 3 }}>
-                  · {err}
+            <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff1744" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#fff', fontSize: 14, fontWeight: 500 }}>
+                  Нашли {errors.length} {pluralizeErrors(errors.length)}
                 </div>
-              ))}
-              {errors.length > 15 && (
-                <div style={{ color: '#888', fontSize: 10, marginTop: 6 }}>
-                  и ещё {errors.length - 15}…
+                <div style={{ color: '#aaa', fontSize: 11, marginTop: 2 }}>
+                  {rows.length} {pluralizeRows(rows.length)} пройдут, {errors.length} пропустим
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* v0.75: Структурированный список ошибок с парсингом */}
+        {errors.length > 0 && (
+          <>
+            <div
+              style={{
+                color: '#555', fontSize: 10, letterSpacing: '1.3px',
+                fontWeight: 500, textTransform: 'uppercase', marginBottom: 6,
+              }}
+            >
+              Список ошибок
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14, maxHeight: 280, overflowY: 'auto' }}>
+              {errors.slice(0, 30).map((err, i) => {
+                const parsed = parseErrorMessage(err)
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: '11px 13px',
+                      background: '#141414',
+                      border: '0.5px solid rgba(255,23,68,0.2)',
+                      borderLeft: '2px solid #ff1744',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div className="flex items-baseline" style={{ gap: 8, marginBottom: 3 }}>
+                      {parsed.line != null && (
+                        <span style={{
+                          color: '#ff1744', fontSize: 10, fontWeight: 700,
+                          fontFamily: '"SF Mono", ui-monospace, monospace',
+                        }}>
+                          СТР. {parsed.line}
+                        </span>
+                      )}
+                      <span style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
+                        {parsed.title}
+                      </span>
+                    </div>
+                    {parsed.detail && (
+                      <div style={{ color: '#aaa', fontSize: 10, lineHeight: 1.4 }}>
+                        {parsed.detail}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {errors.length > 30 && (
+                <div style={{ color: '#666', fontSize: 10, textAlign: 'center', paddingTop: 4 }}>
+                  и ещё {errors.length - 30}…
                 </div>
               )}
             </div>
-          </div>
+
+            {/* v0.75: Совет что можно пропустить плохие строки */}
+            {rows && rows.length > 0 && (
+              <div
+                className="flex items-start"
+                style={{
+                  padding: '12px 14px',
+                  background: 'rgba(74,222,128,0.05)',
+                  border: '0.5px solid rgba(74,222,128,0.2)',
+                  borderRadius: 12,
+                  marginBottom: 14,
+                  gap: 10,
+                }}
+              >
+                <span style={{ fontSize: 14, marginTop: 1 }}>💡</span>
+                <div style={{ color: '#aaa', fontSize: 11, lineHeight: 1.5 }}>
+                  Можно пропустить ошибочные строки и импортировать только валидные — <span style={{ color: '#4ade80', fontWeight: 500 }}>{rows.length} {pluralizeOperations(rows.length)}</span>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Шаблон */}
@@ -402,4 +477,64 @@ export const ImportScreen: React.FC<Props> = ({ onClose }) => {
       </div>
     </div>
   )
+}
+
+// v0.75: Парсер строк ошибок из lib/csv.ts в структуру
+// Примеры формата:
+//   "Строка 3: неверная дата «19.04.26». Формат: YYYY-MM-DD или YYYY-MM-DD HH:MM"
+//   "Строка 17: неизвестный тип «Покупка». Нужно: Расход, Доход или Перевод"
+//   "Строка 32: не указан счёт"
+//   "Файл пустой"
+interface ParsedError {
+  line: number | null
+  title: string
+  detail: string | null
+}
+
+const parseErrorMessage = (raw: string): ParsedError => {
+  // Пытаемся извлечь номер строки
+  const match = raw.match(/^Строка (\d+):\s*(.+)$/)
+  if (!match) {
+    return { line: null, title: raw, detail: null }
+  }
+  const line = Number(match[1])
+  const rest = match[2]
+
+  // Пытаемся разделить заголовок и детали по первой точке или по тире
+  // Типовые варианты в csv.ts: "неверная дата «X». Формат: Y"
+  const dotIdx = rest.indexOf('. ')
+  if (dotIdx > 0) {
+    const title = capitalize(rest.slice(0, dotIdx))
+    const detail = rest.slice(dotIdx + 2)
+    return { line, title, detail }
+  }
+
+  return { line, title: capitalize(rest), detail: null }
+}
+
+const capitalize = (s: string): string =>
+  s.length > 0 ? s[0].toUpperCase() + s.slice(1) : s
+
+const pluralizeErrors = (n: number): string => {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'ошибку'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'ошибки'
+  return 'ошибок'
+}
+
+const pluralizeRows = (n: number): string => {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'строка'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'строки'
+  return 'строк'
+}
+
+const pluralizeOperations = (n: number): string => {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'операцию'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'операции'
+  return 'операций'
 }
