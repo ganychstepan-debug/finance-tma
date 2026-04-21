@@ -14,6 +14,7 @@ import { EditTransactionScreen } from '@/screens/EditTransactionScreen'
 import { AllTransactionsScreen } from '@/screens/AllTransactionsScreen'
 import { CurrencyScreen } from '@/screens/CurrencyScreen'
 import { RatesScreen } from '@/screens/RatesScreen'
+import { ExportScreen } from '@/screens/ExportScreen'
 import { WipeScreen } from '@/screens/WipeScreen'
 import { OnboardingScreen } from '@/screens/OnboardingScreen'
 import { TransferScreen } from '@/screens/TransferScreen'
@@ -43,6 +44,7 @@ type Modal =
   | { kind: 'wipe' }
   | { kind: 'goals' }
   | { kind: 'referral' }
+  | { kind: 'export' }
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home')
@@ -286,6 +288,14 @@ export default function App() {
     )
   }
 
+  if (modal.kind === 'export') {
+    return wrap(
+      <div className="h-screen flex flex-col">
+        <ExportScreen onClose={close} />
+      </div>
+    )
+  }
+
   if (modal.kind === 'wipe') {
     return wrap(
       <div className="h-screen flex flex-col">
@@ -382,6 +392,7 @@ export default function App() {
           onOpenReferral={() => { setMenuOpen(false); setModal({ kind: 'referral' }) }}
           onOpenCurrency={() => { setMenuOpen(false); setModal({ kind: 'currency' }) }}
           onOpenRates={() => { setMenuOpen(false); setModal({ kind: 'rates' }) }}
+          onOpenExport={() => { setMenuOpen(false); setModal({ kind: 'export' }) }}
           onShowChangelog={() => {
             setMenuOpen(false)
             // Сбрасываем метку, чтобы при следующем открытии она снова появилась.

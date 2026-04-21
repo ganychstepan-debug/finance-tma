@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/store'
 import { getUser, haptic, openTelegramLink } from '@/lib/telegram'
-import { exportTransactionsCSV, downloadFile } from '@/lib/csv'
 import { gradientForUser, getCustomAvatar, setCustomAvatar, removeCustomAvatar, processAvatarFile } from '@/lib/avatar'
 import { APP_CHANNEL_USERNAME, APP_CHANNEL_URL } from '@/lib/version'
 
@@ -12,6 +11,7 @@ interface Props {
   onOpenReferral: () => void
   onOpenCurrency: () => void
   onOpenRates: () => void
+  onOpenExport: () => void
   onShowChangelog: () => void
   onShowOnboarding: () => void
 }
@@ -27,7 +27,7 @@ type Row = {
   rightText?: string    // крупный текст справа (например код валюты)
 }
 
-export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onShowChangelog, onShowOnboarding }) => {
+export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onOpenExport, onShowChangelog, onShowOnboarding }) => {
   const state = useStore()
   const user = getUser()
   const firstName = user?.first_name ?? 'Гость'
@@ -74,35 +74,6 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
     window.addEventListener('avatar-updated', handler)
     return () => window.removeEventListener('avatar-updated', handler)
   }, [])
-
-  const handleExportAll = async () => {
-    haptic.medium()
-    if (state.transactions.length === 0) {
-      alert('Пока нет операций для экспорта.\nДобавь хотя бы одну транзакцию.')
-      return
-    }
-    const csv = exportTransactionsCSV(state)
-    const now = new Date().toISOString().slice(0, 10)
-    const result = await downloadFile(`finance_${now}.csv`, csv)
-    if (result === 'downloaded') {
-      alert('Файл скачан.\nОткрой «Загрузки» или проверь внизу экрана.')
-    }
-    onClose()
-  }
-
-  const handleExportMonth = async () => {
-    haptic.medium()
-    const now = new Date()
-    const from = new Date(now.getFullYear(), now.getMonth(), 1)
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-    const csv = exportTransactionsCSV(state, from, to)
-    const label = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`
-    const result = await downloadFile(`finance_${label}.csv`, csv)
-    if (result === 'downloaded') {
-      alert('Файл скачан.\nОткрой «Загрузки» или проверь внизу экрана.')
-    }
-    onClose()
-  }
 
   const handleRestore = async () => {
     const ok = window.confirm(
@@ -178,18 +149,11 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       onClick: handleRestore,
     },
     {
-      id: 'export-month',
+      id: 'export',
       icon: '📤',
-      title: 'Экспорт за этот месяц',
-      subtitle: 'CSV для Excel',
-      onClick: handleExportMonth,
-    },
-    {
-      id: 'export-all',
-      icon: '📦',
-      title: 'Экспорт всей истории',
-      subtitle: `${state.transactions.length} операций`,
-      onClick: handleExportAll,
+      title: 'Экспорт в CSV',
+      subtitle: `${state.transactions.length.toLocaleString('ru-RU')} операций`,
+      onClick: () => { haptic.select(); onClose(); onOpenExport() },
     },
   ]
 
@@ -198,7 +162,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.70',
+      subtitle: 'Версия v0.71',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {
