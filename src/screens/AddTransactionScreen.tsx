@@ -149,25 +149,11 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
 
   const content = (
     <div className="flex flex-col h-full">
-      {/* Шапка */}
+      {/* v0.69: Шапка — просто BackButton + заголовок, кнопка Чек рядом с суммой */}
       <div className="px-5 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
-        <div className="text-base font-medium">Новый {type === 'expense' ? 'расход' : 'доход'}</div>
-        {type === 'expense' ? (
-          <button
-            onClick={() => { haptic.light(); fileInputRef.current?.click() }}
-            disabled={scanning}
-            className="flex items-center gap-1 px-3 py-1.5 -mr-3 bg-bg-secondary border border-border rounded-btn text-accent text-sm cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span>{scanning ? '...' : 'Чек'}</span>
-          </button>
-        ) : (
-          <div style={{ width: 60 }} />
-        )}
+        <div className="text-base font-medium">{type === 'expense' ? 'Расход' : 'Доход'}</div>
+        <div style={{ width: 60 }} />
         <input
           ref={fileInputRef}
           type="file"
@@ -213,8 +199,8 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         }}>
           Сумма
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
             <span style={{
               color: type === 'expense' ? '#ff1744' : '#00c864',
               fontSize: 36, fontWeight: 300, lineHeight: 1,
@@ -229,10 +215,36 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
             }}>
               {amount}
             </span>
+            <span style={{ color: '#666', fontSize: 22, fontWeight: 400, marginLeft: 6 }}>
+              {account?.currency === 'RUB' ? '₽' : account?.currency}
+            </span>
           </div>
-          <span style={{ color: '#666', fontSize: 22, fontWeight: 400 }}>
-            {account?.currency === 'RUB' ? '₽' : account?.currency}
-          </span>
+
+          {/* v0.69: Кнопка ЧЕК рядом с суммой — только для расходов */}
+          {type === 'expense' && (
+            <button
+              onClick={() => { haptic.light(); fileInputRef.current?.click() }}
+              disabled={scanning}
+              className="flex flex-col items-center cursor-pointer border-0 active:scale-95 transition-transform disabled:opacity-50"
+              style={{
+                padding: '10px 12px',
+                background: 'linear-gradient(135deg, #ff1744, #c01038)',
+                borderRadius: 14,
+                color: '#fff',
+                boxShadow: '0 0 20px rgba(255,23,68,0.5), 0 4px 14px rgba(255,23,68,0.35)',
+                gap: 2,
+                minWidth: 54,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.4px' }}>
+                {scanning ? '...' : 'ЧЕК'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
