@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore, selectTotalBalance, selectMonthIncome, selectMonthSpend, selectMonthTransactions } from '@/store'
 import { HomeHeader } from '@/components/HomeHeader'
 import { AccountCard } from '@/components/AccountCard'
@@ -7,6 +7,7 @@ import { SwipeableRow } from '@/components/SwipeableRow'
 import { formatMoneyShort, currencySign } from '@/lib/formatters'
 import { iconById } from '@/lib/icons'
 import { haptic } from '@/lib/telegram'
+import { getRates } from '@/lib/fx'
 
 interface Props {
   onAddExpense: () => void
@@ -32,6 +33,12 @@ export const HomeScreen: React.FC<Props> = ({
   const canToggleCurrency = state.settings.baseCurrency !== 'USD'
   const [showInUSD, setShowInUSD] = useState(false)
   const displayCurrency = showInUSD ? 'USD' : state.settings.baseCurrency
+
+  // v0.65: курс USD/RUB для эквивалента под балансом при переключении
+  const [usdRate, setUsdRate] = useState<number | null>(null)
+  useEffect(() => {
+    getRates().then((r) => setUsdRate(r.USD || null)).catch(() => {})
+  }, [])
 
   const activeGoals = (state.goals ?? []).filter((g) => !g.archived)
   const getGoalProgress = (g: typeof activeGoals[0]): number => {
@@ -75,7 +82,7 @@ export const HomeScreen: React.FC<Props> = ({
 
       <div className="px-5 pt-3 pb-0" style={{ marginBottom: 10 }}>
         <div className="text-2xs text-text-muted" style={{ letterSpacing: '1.5px', fontWeight: 500 }}>
-          ОБЩИЙ БАЛАНС
+          ОБЩИЙ БАЛАНС{showInUSD ? ' · USD' : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 6 }}>
           {canToggleCurrency ? (
@@ -100,6 +107,13 @@ export const HomeScreen: React.FC<Props> = ({
             {totalStr}
           </span>
         </div>
+
+        {/* v0.65: Эквивалент в основной валюте + курс */}
+        {showInUSD && usdRate && (
+          <div style={{ color: '#666', fontSize: 11, marginTop: 6 }}>
+            ≈ {Math.round(total * usdRate).toLocaleString('ru-RU')} ₽ · курс {usdRate.toFixed(2)}
+          </div>
+        )}
 
         {monthDelta !== 0 && (
           <div
