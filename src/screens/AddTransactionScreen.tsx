@@ -149,11 +149,23 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
 
   const content = (
     <div className="flex flex-col h-full">
-      {/* v0.69: Шапка — просто BackButton + заголовок, кнопка Чек рядом с суммой */}
+      {/* v0.69/v0.70: Шапка — просто BackButton + заголовок + бейдж "чек" если из скана */}
       <div className="px-5 pt-3 pb-2 flex justify-between items-center">
         <BackButton onClick={onClose} />
         <div className="text-base font-medium">{type === 'expense' ? 'Расход' : 'Доход'}</div>
-        <div style={{ width: 60 }} />
+        {scanResult ? (
+          <div style={{
+            color: '#4ade80', fontSize: 11, fontWeight: 600,
+            padding: '3px 8px',
+            background: 'rgba(74,222,128,0.1)',
+            border: '0.5px solid rgba(74,222,128,0.3)',
+            borderRadius: 8,
+          }}>
+            чек
+          </div>
+        ) : (
+          <div style={{ width: 60 }} />
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -166,28 +178,29 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
 
       {/* v0.44: Скроллируемый средний блок — сумма/чипы/категории */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* Индикатор сканирования / результата */}
-        {(scanning || scanError || scanResult) && (
-          <div className="px-5 pb-2">
-            {scanning && (
-              <div className="p-2.5 bg-accent/10 border border-accent/40 rounded-btn text-center">
-                <div className="text-[11px] text-accent font-medium">🤖 ИИ читает чек...</div>
-                <div className="text-[10px] text-text-muted mt-0.5">Обычно занимает 2-4 секунды</div>
+        {/* v0.70: 5.03 — зелёная плашка результата после распознавания */}
+        {!scanning && !scanError && scanResult && (
+          <div className="px-4 pb-3">
+            <div
+              className="flex items-start"
+              style={{
+                padding: '10px 12px',
+                background: 'rgba(74,222,128,0.08)',
+                border: '0.5px solid rgba(74,222,128,0.25)',
+                borderRadius: 12,
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 16, marginTop: 1 }}>✨</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#4ade80', fontSize: 12, fontWeight: 600, marginBottom: 2 }}>
+                  Чек распознан
+                </div>
+                <div style={{ color: '#aaa', fontSize: 10, lineHeight: 1.4 }}>
+                  Проверь поля — можно исправить если что-то не так
+                </div>
               </div>
-            )}
-            {scanError && (
-              <div className="p-2.5 bg-accent/10 border border-accent/50 rounded-btn">
-                <div className="text-[11px] text-accent font-medium">⚠ Не получилось</div>
-                <div className="text-[10px] text-text-secondary mt-0.5">{scanError}</div>
-                <div className="text-[10px] text-text-faint mt-1">Заполни форму вручную или попробуй ещё раз</div>
-              </div>
-            )}
-            {!scanning && !scanError && scanResult && (
-              <div className="p-2.5 bg-success/10 border border-success/40 rounded-btn">
-                <div className="text-[11px] text-success font-medium">✓ Распознано: {scanResult.merchant}</div>
-                <div className="text-[10px] text-text-muted mt-0.5">Проверь данные и жми «Готово»</div>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -508,6 +521,177 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
               className="w-full py-3 bg-accent border-0 rounded-btn text-white text-sm font-medium cursor-pointer"
             >
               Готово
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* v0.70: 5.02 Полноэкранный оверлей сканирования */}
+      {scanning && (
+        <div
+          className="fixed inset-0 flex flex-col animate-fade-in"
+          style={{ background: '#000', zIndex: 200 }}
+        >
+          <div className="px-5 pt-3 pb-2 flex justify-between items-center shrink-0">
+            <div style={{ width: 70 }} />
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>Сканирую чек</div>
+            <div style={{ width: 70 }} />
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center" style={{ padding: '40px 20px' }}>
+            {/* Круговой прогресс */}
+            <div className="relative" style={{ width: 110, height: 110, marginBottom: 28 }}>
+              <svg width="110" height="110" viewBox="0 0 110 110" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
+                <circle cx="55" cy="55" r="48" fill="none" stroke="rgba(255,23,68,0.15)" strokeWidth="3"/>
+                <circle
+                  cx="55" cy="55" r="48" fill="none"
+                  stroke="#ff1744" strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray="301" strokeDashoffset="90"
+                  style={{ filter: 'drop-shadow(0 0 8px rgba(255,23,68,0.6))', animation: 'spin 2s linear infinite', transformOrigin: 'center' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ff1744" strokeWidth="1.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </div>
+            </div>
+
+            <div style={{ color: '#fff', fontSize: 18, fontWeight: 500, marginBottom: 8, letterSpacing: '-0.01em' }}>
+              Распознаём чек…
+            </div>
+            <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5, textAlign: 'center', maxWidth: 240 }}>
+              Ищем сумму, магазин, дату и угадываем категорию
+            </div>
+
+            <div style={{ marginTop: 26, display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 240 }}>
+              <div className="flex items-center" style={{ gap: 10, color: '#4ade80', fontSize: 11 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Фото сжато</span>
+              </div>
+              <div className="flex items-center" style={{ gap: 10, color: '#4ade80', fontSize: 11 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Отправлено в OpenAI Vision</span>
+              </div>
+              <div className="flex items-center" style={{ gap: 10, color: '#ff1744', fontSize: 11 }}>
+                <div style={{
+                  width: 14, height: 14,
+                  border: '2px solid rgba(255,23,68,0.3)',
+                  borderTopColor: '#ff1744',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                <span>Разбираем данные…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* v0.70: 5.04 Оверлей ошибки скана */}
+      {scanError && (
+        <div
+          className="fixed inset-0 flex flex-col animate-fade-in"
+          style={{ background: '#0a0a0a', zIndex: 200 }}
+        >
+          <div className="px-5 pt-3 pb-2 flex justify-between items-center shrink-0">
+            <button
+              onClick={() => setScanError(null)}
+              className="flex items-center gap-1 px-3 py-1.5 -ml-3 bg-bg-secondary border border-border rounded-btn text-text-secondary text-sm cursor-pointer active:scale-95"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+              <span>Закрыть</span>
+            </button>
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>Сканирование чека</div>
+            <div style={{ width: 70 }} />
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center" style={{ padding: 20, textAlign: 'center' }}>
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: 96, height: 96,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(255,23,68,0.18) 0%, rgba(255,23,68,0) 70%)',
+                marginBottom: 22,
+              }}
+            >
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ff1744" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div style={{ color: '#fff', fontSize: 20, fontWeight: 500, marginBottom: 10, letterSpacing: '-0.01em' }}>
+              Не удалось распознать
+            </div>
+            <div style={{ color: '#aaa', fontSize: 13, lineHeight: 1.55, maxWidth: 280, marginBottom: 24 }}>
+              {scanError}
+            </div>
+
+            <div
+              style={{
+                padding: '14px 16px',
+                background: '#141414',
+                border: '0.5px solid #222',
+                borderRadius: 14,
+                maxWidth: 300,
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ color: '#666', fontSize: 9, letterSpacing: '2px', fontWeight: 600, textTransform: 'uppercase', marginBottom: 10 }}>
+                Советы
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="flex" style={{ gap: 10, color: '#ddd', fontSize: 12, lineHeight: 1.45 }}>
+                  <span style={{ color: '#ff1744' }}>·</span>Прямой ракурс сверху, не под углом
+                </div>
+                <div className="flex" style={{ gap: 10, color: '#ddd', fontSize: 12, lineHeight: 1.45 }}>
+                  <span style={{ color: '#ff1744' }}>·</span>Весь чек в кадре, без обрезки
+                </div>
+                <div className="flex" style={{ gap: 10, color: '#ddd', fontSize: 12, lineHeight: 1.45 }}>
+                  <span style={{ color: '#ff1744' }}>·</span>Хорошее освещение, без бликов
+                </div>
+                <div className="flex" style={{ gap: 10, color: '#ddd', fontSize: 12, lineHeight: 1.45 }}>
+                  <span style={{ color: '#ff1744' }}>·</span>Чек не смятый, не рваный
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-4 pb-5 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)' }}>
+            <button
+              onClick={() => { setScanError(null); fileInputRef.current?.click() }}
+              className="w-full cursor-pointer border-0 active:scale-[0.98] transition-transform"
+              style={{
+                padding: 14,
+                background: '#ff1744',
+                borderRadius: 14,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                boxShadow: '0 4px 20px rgba(255,23,68,0.4)',
+                marginBottom: 8,
+              }}
+            >
+              Сфоткать заново
+            </button>
+            <button
+              onClick={() => setScanError(null)}
+              className="w-full bg-transparent cursor-pointer"
+              style={{
+                padding: 12,
+                border: '0.5px solid #333',
+                borderRadius: 14,
+                color: '#aaa',
+                fontSize: 13,
+              }}
+            >
+              Ввести вручную
             </button>
           </div>
         </div>
