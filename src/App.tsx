@@ -130,8 +130,19 @@ export default function App() {
   // Попап канала: показываем один раз после онбординга
   const [channelPrompt, setChannelPrompt] = useState<boolean>(false)
 
+  // v0.62: BotPendingSheet должен быть виден в любом состоянии (модалки, онбординг и т.д.)
+  // Оборачиваем каждый return в этот wrapper, чтобы pending из бота всплывал поверх чего угодно.
+  const wrap = (content: React.ReactNode) => (
+    <>
+      {content}
+      {botPendingOpen && (
+        <BotPendingSheet onClose={() => setBotPendingOpen(false)} />
+      )}
+    </>
+  )
+
   if (onboarding) {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <OnboardingScreen onDone={() => {
           try {
@@ -154,7 +165,7 @@ export default function App() {
   }
 
   if (channelPrompt) {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <ChannelPromptScreen onDone={() => {
           try { localStorage.setItem('channel_prompt_seen', '1') } catch {}
@@ -165,7 +176,7 @@ export default function App() {
   }
 
   if (changelog) {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <ChangelogScreen onDone={() => {
           try { localStorage.setItem('changelog_version', String(APP_VERSION)) } catch {}
@@ -182,7 +193,7 @@ export default function App() {
   // ============================================================================
 
   if (modal.kind === 'accounts') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <AccountsScreen
           onClose={close}
@@ -195,7 +206,7 @@ export default function App() {
 
   if (modal.kind === 'account-edit') {
     const returnTo = modal.from === 'home' ? { kind: 'none' as const } : { kind: 'accounts' as const }
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <AccountEditScreen
           editId={modal.id}
@@ -207,7 +218,7 @@ export default function App() {
   }
 
   if (modal.kind === 'category-edit') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <CategoryEditScreen
           editId={modal.id}
@@ -220,7 +231,7 @@ export default function App() {
   }
 
   if (modal.kind === 'add-tx') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <AddTransactionScreen
           type={modal.txType}
@@ -237,7 +248,7 @@ export default function App() {
   }
 
   if (modal.kind === 'edit-tx') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <EditTransactionScreen
           txId={modal.txId}
@@ -249,7 +260,7 @@ export default function App() {
   }
 
   if (modal.kind === 'all-tx') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <AllTransactionsScreen
           onClose={close}
@@ -260,7 +271,7 @@ export default function App() {
   }
 
   if (modal.kind === 'currency') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <CurrencyScreen onClose={close} />
       </div>
@@ -268,7 +279,7 @@ export default function App() {
   }
 
   if (modal.kind === 'rates') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <RatesScreen onClose={close} />
       </div>
@@ -276,7 +287,7 @@ export default function App() {
   }
 
   if (modal.kind === 'wipe') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <WipeScreen onClose={close} />
       </div>
@@ -284,7 +295,7 @@ export default function App() {
   }
 
   if (modal.kind === 'transfer') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <TransferScreen
           onClose={close}
@@ -299,7 +310,7 @@ export default function App() {
   }
 
   if (modal.kind === 'goals') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <GoalsScreen onClose={close} />
       </div>
@@ -307,7 +318,7 @@ export default function App() {
   }
 
   if (modal.kind === 'referral') {
-    return (
+    return wrap(
       <div className="h-screen flex flex-col">
         <ReferralScreen onClose={close} />
       </div>
@@ -318,7 +329,7 @@ export default function App() {
   // Основное приложение с табами
   // ============================================================================
 
-  return (
+  return wrap(
     <div className="h-screen flex flex-col bg-bg-primary">
       <div className="flex-1 min-h-0 overflow-hidden">
         {tab === 'home' && (
@@ -410,11 +421,6 @@ export default function App() {
           />
         )
       })()}
-
-      {/* Pending из бота — текст/голос превращённые в карточку */}
-      {botPendingOpen && (
-        <BotPendingSheet onClose={() => setBotPendingOpen(false)} />
-      )}
     </div>
   )
 }

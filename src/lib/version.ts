@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 67   // = v0.61 — debug логирование pending
+export const APP_VERSION = 68   // = v0.62 — BotPendingSheet виден поверх всех модалок
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================
