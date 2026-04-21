@@ -227,61 +227,53 @@ export const AddTransactionScreen: React.FC<Props> = ({ type, onClose, onDone, o
         </div>
       </div>
 
-      {/* v0.34: Счёт — горизонтальные чипы */}
-      <div className="px-4 pb-1.5">
+      {/* v0.52: Счёт — dropdown одной строкой */}
+      <div className="px-4 pb-2">
         <div style={{
           color: '#666', fontSize: 10, letterSpacing: '1.3px',
           fontWeight: 500, textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4,
         }}>
           Счёт
         </div>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 6,
-          }}
-        >
-          {visibleAccounts.map((a) => {
-            const isActive = a.id === accountId
-            const bank = a.type === 'card' ? bankById(a.bankId, state.settings.customBanks) : null
-            const bankColor = bank?.color || (a.type === 'cash' ? '#2a2a2a' : '#1f1f1f')
-            const isLight = ['#FFDD2D', '#FEE600', '#FFCC00'].includes(bankColor.toUpperCase())
-            const textColor = isLight ? '#000' : '#fff'
-            const letter = bank?.short || (a.type === 'cash' ? '₽' : (a.name.charAt(0) || '?').toUpperCase())
-            return (
-              <button
-                key={a.id}
-                onClick={() => { haptic.select(); setAccountId(a.id) }}
-                className="cursor-pointer"
+        {(() => {
+          const a = account
+          if (!a) return null
+          const bank = a.type === 'card' ? bankById(a.bankId, state.settings.customBanks) : null
+          const bankColor = bank?.color || (a.type === 'cash' ? '#2a2a2a' : '#1f1f1f')
+          const isLight = ['#FFDD2D', '#FEE600', '#FFCC00'].includes(bankColor.toUpperCase())
+          const textColor = isLight ? '#000' : '#fff'
+          const letter = bank?.short || (a.type === 'cash' ? '₽' : (a.name.charAt(0) || '?').toUpperCase())
+          return (
+            <button
+              onClick={() => { haptic.select(); setShowAccountPicker(true) }}
+              className="w-full cursor-pointer flex items-center"
+              style={{
+                padding: '10px 13px',
+                background: '#141414',
+                border: '0.5px solid #222',
+                borderRadius: 10,
+                gap: 10,
+              }}
+            >
+              <div
+                className="flex items-center justify-center shrink-0"
                 style={{
-                  padding: '9px 12px',
-                  background: isActive
-                    ? (type === 'income' ? '#00c864' : '#ff1744')
-                    : '#141414',
-                  color: isActive ? '#fff' : '#aaa',
-                  fontSize: 12,
-                  fontWeight: isActive ? 600 : 500,
-                  borderRadius: 10,
-                  border: 0,
-                  whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', gap: 7,
+                  width: 22, height: 22, background: bankColor,
+                  borderRadius: 6, fontSize: 11, fontWeight: 800, color: textColor,
                 }}
               >
-                <div
-                  className="flex items-center justify-center shrink-0"
-                  style={{
-                    width: 18, height: 18, background: bankColor,
-                    borderRadius: 5, fontSize: 10, fontWeight: 800, color: textColor,
-                  }}
-                >
-                  {letter}
-                </div>
+                {letter}
+              </div>
+              <span style={{ flex: 1, textAlign: 'left', color: '#fff', fontSize: 13, fontWeight: 500 }}>
                 {a.name}
-              </button>
-            )
-          })}
-        </div>
+              </span>
+              <span style={{ color: '#666', fontSize: 12 }}>
+                {Math.round(a.balance).toLocaleString('ru-RU')} {a.currency === 'RUB' ? '₽' : a.currency}
+              </span>
+              <span style={{ color: '#666', fontSize: 10, marginLeft: 4 }}>▾</span>
+            </button>
+          )
+        })()}
       </div>
 
       {/* Категории */}
