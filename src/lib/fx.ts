@@ -64,15 +64,15 @@ const saveToStorage = (c: RatesCache): void => {
  * 3. Сходить в API ЦБ РФ, закэшировать
  * 4. Если API недоступен — вернуть старый кэш или fallback
  */
-export const getRates = async (): Promise<Rates> => {
+export const getRates = async (force = false): Promise<Rates> => {
   const now = Date.now()
 
-  if (memory && now - memory.fetchedAt < TTL_MS) {
+  if (!force && memory && now - memory.fetchedAt < TTL_MS) {
     return memory.rates
   }
 
-  if (!memory) memory = loadFromStorage()
-  if (memory && now - memory.fetchedAt < TTL_MS) {
+  if (!force && !memory) memory = loadFromStorage()
+  if (!force && memory && now - memory.fetchedAt < TTL_MS) {
     return memory.rates
   }
 
