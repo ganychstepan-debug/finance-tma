@@ -50,6 +50,15 @@ const SYSTEM_PROMPT = `Ты парсер коротких фраз о трата
 Только JSON, без текста вокруг.`
 
 export const parseExpensePhrase = async (phrase: string): Promise<ParsedExpense | null> => {
+  const list = await parseExpensePhrases(phrase)
+  return list[0] ?? null
+}
+
+/**
+ * Массовый парсер: извлекает ВСЕ операции из текста.
+ * "купил кофе 300, зарплата 80к, такси 500" → 3 операции.
+ */
+export const parseExpensePhrases = async (phrase: string): Promise<ParsedExpense[]> => {
   const apiKey = (globalThis as any).process?.env?.OPENAI_API_KEY
     ?? (typeof process !== 'undefined' ? process.env?.OPENAI_API_KEY : undefined)
 
@@ -63,11 +72,11 @@ export const parseExpensePhrase = async (phrase: string): Promise<ParsedExpense 
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
-      max_tokens: 200,
+      max_tokens: 800,
       temperature: 0.1,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: BULK_SYSTEM_PROMPT },
         { role: 'user', content: phrase },
       ],
     }),
@@ -80,27 +89,60 @@ export const parseExpensePhrase = async (phrase: string): Promise<ParsedExpense 
 
   const data = await res.json()
   const text = data?.choices?.[0]?.message?.content
-  if (typeof text !== 'string') return null
-
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) return null
+  if (typeof text !== 'string') return []
 
   try {
-    const parsed = JSON.parse(match[0])
-    const amount = Number(parsed?.amount) || 0
-    if (amount <= 0) return null
-
-    return {
-      amount,
-      type: parsed?.type === 'income' ? 'income' : 'expense',
-      categoryGuess: String(parsed?.categoryGuess ?? 'Другое').trim().slice(0, 40),
-      merchant: parsed?.merchant ? String(parsed.merchant).trim().slice(0, 40) : undefined,
-      currency: parsed?.currency ? String(parsed.currency).trim().toUpperCase().slice(0, 4) : 'RUB',
-      comment: parsed?.comment ? String(parsed.comment).trim().slice(0, 80) : undefined,
-      daysAgo: Math.max(0, Math.min(30, Number(parsed?.daysAgo) || 0)),
-      confidence: ['high', 'medium', 'low'].includes(parsed?.confidence) ? parsed.confidence : 'medium',
-    }
+    const obj = JSON.parse(text)
+    const arr = Array.isArray(obj?.operations) ? obj.operations : []
+    return arr
+      .map((p: any): ParsedExpense | null => {
+        const amount = Number(p?.amount) || 0
+        if (amount <= 0) return null
+        return {
+          amount,
+          type: p?.type === 'income' ? 'income' : 'expense',
+          categoryGuess: String(p?.categoryGuess ?? 'Другое').trim().slice(0, 40),
+          merchant: p?.merchant ? String(p.merchant).trim().slice(0, 40) : undefined,
+          currency: p?.currency ? String(p.currency).trim().toUpperCase().slice(0, 4) : 'RUB',
+          comment: p?.comment ? String(p.comment).trim().slice(0, 80) : undefined,
+          daysAgo: Math.max(0, Math.min(30, Number(p?.daysAgo) || 0)),
+          confidence: ['high', 'medium', 'low'].includes(p?.confidence) ? p.confidence : 'medium',
+        }
+      })
+      .filter((x: ParsedExpense | null): x is ParsedExpense => x !== null)
   } catch {
-    return null
+    return []
   }
 }
+
+const BULK_SYSTEM_PROMPT = `Ты парсер финансовых операций на русском. Юзер пишет одну или НЕСКОЛЬКО операций в одном сообщении.
+
+Вернёшь JSON:
+{
+  "operations": [
+    {"amount":0,"type":"expense","categoryGuess":"","merchant":"","currency":"RUB","comment":"","daysAgo":0,"confidence":"high"}
+  ]
+}
+
+Правила:
+- amount — число. "1к"=1000, "3к"=3000, "2.5к"=2500, "1.5лям"=1500000
+- type — "expense" (трата/купил/заплатил) или "income" (зарплата/получил/вернули)
+- categoryGuess — одно из: Еда, Транспорт, Дом, Развлечения, Одежда, Здоровье, Поездки, Связь, Подарки, Спорт, Образование, Подписки, Зарплата, Другое
+- merchant — 1-2 слова (пятёрочка, такси, салон) или пусто
+- currency — RUB (по умолчанию), USD, EUR, KZT и т.п.
+- comment — доп. контекст или пусто
+- daysAgo — 0 сегодня, 1 вчера, 2 позавчера
+- confidence — "high"/"medium"/"low"
+
+ВАЖНО: в operations должен быть массив из ВСЕХ упомянутых операций. Разделители: запятая, "и", "плюс", "потом", перевод строки.
+
+Примеры:
+"такси 500" → {"operations":[{"amount":500,"type":"expense","categoryGuess":"Транспорт","merchant":"такси","currency":"RUB","comment":"","daysAgo":0,"confidence":"high"}]}
+
+"купил кофе 300 и потратил на такси 500, зарплата 80к" → {"operations":[
+  {"amount":300,"type":"expense","categoryGuess":"Еда","merchant":"кофе","currency":"RUB","comment":"","daysAgo":0,"confidence":"high"},
+  {"amount":500,"type":"expense","categoryGuess":"Транспорт","merchant":"такси","currency":"RUB","comment":"","daysAgo":0,"confidence":"high"},
+  {"amount":80000,"type":"income","categoryGuess":"Зарплата","merchant":"","currency":"RUB","comment":"","daysAgo":0,"confidence":"high"}
+]}
+
+Только JSON, без текста вокруг.`

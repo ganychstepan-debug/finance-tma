@@ -6,7 +6,7 @@
 import { json } from '../_shared'
 import { sendBotMessage, editBotMessage, answerCallback, escapeHtml } from '../_bot'
 import { setPendingReferral, addPendingTx, removePendingTx, type PendingTx } from '../_kv'
-import { parseExpensePhrase } from '../_parser'
+import { parseExpensePhrases } from '../_parser'
 
 export const config = { runtime: 'edge' }
 
@@ -120,7 +120,7 @@ export default async function handler(req: Request): Promise<Response> {
     const greet =
       `Привет, <b>${escapeHtml(firstName)}</b>! 👋\n\n`
       + `<b>Сохранёнки</b> — учёт финансов прямо в Telegram.\n\n`
-      + `💬 Пиши в этот чат: <i>«такси 500»</i>\n`
+      + `💬 Пиши одну или несколько операций: <i>«кофе 300, такси 500»</i>\n`
       + `🎤 Или голосом (Telegram Premium)\n`
       + `📸 В приложении — скан чеков, статистика, цели\n\n`
       + `Жми кнопку 👇`
@@ -138,7 +138,9 @@ export default async function handler(req: Request): Promise<Response> {
         + `• <code>зарплата 80к</code>\n`
         + `• <code>вчера купил шоколадку 120</code>\n`
         + `• <code>20 долларов за игру</code>\n\n`
-        + `После распознавания я покажу карточку — жми «Добавить», операция попадёт в приложение.`,
+        + `Можно несколько сразу:\n`
+        + `• <code>кофе 300, такси 500, зарплата 80к</code>\n\n`
+        + `Открой приложение — подтверди каждую операцию одним тапом.`,
     })
     return json({ ok: true })
   }
@@ -148,64 +150,95 @@ export default async function handler(req: Request): Promise<Response> {
 }
 
 const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'voice') => {
-  if (rawText.length > 200) {
-    await sendBotMessage(userId, { text: '⚠ Слишком длинное сообщение. Коротко: «такси 500».' })
+  if (rawText.length > 500) {
+    await sendBotMessage(userId, { text: '⚠ Слишком длинное сообщение. Максимум 500 символов.' })
     return
   }
 
-  let parsed
+  let parsedList: Awaited<ReturnType<typeof parseExpensePhrases>>
   try {
-    parsed = await parseExpensePhrase(rawText)
+    parsedList = await parseExpensePhrases(rawText)
   } catch (e) {
     console.error('parse error:', (e as Error).message)
     await sendBotMessage(userId, { text: '❌ Не получилось распознать. Попробуй ещё раз или открой приложение.' })
     return
   }
 
-  if (!parsed) {
+  if (parsedList.length === 0) {
     await sendBotMessage(userId, {
       text:
         `🤔 Не понял. Напиши так:\n`
         + `<code>такси 500</code>\n`
-        + `<code>пятёрочка 1500</code>`,
+        + `<code>пятёрочка 1500</code>\n`
+        + `<code>кофе 300 и такси 500</code>`,
     })
     return
   }
 
-  const date = new Date()
-  date.setDate(date.getDate() - (parsed.daysAgo ?? 0))
-
-  const tx: PendingTx = {
-    id: String(Date.now()),
-    amount: parsed.amount,
-    type: parsed.type,
-    categoryGuess: parsed.categoryGuess,
-    merchant: parsed.merchant,
-    currency: parsed.currency || 'RUB',
-    comment: parsed.comment,
-    date: date.toISOString(),
-    createdAt: new Date().toISOString(),
-    source,
-    rawText,
+  // Сохраняем все в KV
+  const txList: PendingTx[] = []
+  for (let i = 0; i < parsedList.length; i++) {
+    const parsed = parsedList[i]
+    const date = new Date()
+    date.setDate(date.getDate() - (parsed.daysAgo ?? 0))
+    const tx: PendingTx = {
+      id: `${Date.now()}_${i}`,
+      amount: parsed.amount,
+      type: parsed.type,
+      categoryGuess: parsed.categoryGuess,
+      merchant: parsed.merchant,
+      currency: parsed.currency || 'RUB',
+      comment: parsed.comment,
+      date: date.toISOString(),
+      createdAt: new Date().toISOString(),
+      source,
+      rawText,
+    }
+    try {
+      await addPendingTx(userId, tx)
+      txList.push(tx)
+    } catch (e) {
+      console.error('kv error:', (e as Error).message)
+    }
   }
 
-  try {
-    await addPendingTx(userId, tx)
-  } catch (e) {
-    console.error('kv error:', (e as Error).message)
+  if (txList.length === 0) {
     await sendBotMessage(userId, { text: '❌ Не получилось сохранить. Попробуй ещё раз.' })
     return
   }
 
-  const cardText = formatTxCard(tx, parsed.daysAgo ?? 0)
-  await sendBotMessage(userId, {
-    text: cardText,
-    inlineKeyboard: [
-      [{ text: '✅ Добавить', callback_data: `add:${tx.id}` }],
-      [
-        { text: '❌ Отмена', callback_data: `cancel:${tx.id}` },
-        { text: '📱 В приложении', url: APP_URL },
+  // Одна операция — показываем карточку как раньше
+  if (txList.length === 1) {
+    const tx = txList[0]
+    const parsed = parsedList[0]
+    const cardText = formatTxCard(tx, parsed.daysAgo ?? 0)
+    await sendBotMessage(userId, {
+      text: cardText,
+      inlineKeyboard: [
+        [{ text: '📱 Открыть в приложении', url: APP_URL }],
+        [{ text: '❌ Отменить', callback_data: `cancel:${tx.id}` }],
       ],
+    })
+    return
+  }
+
+  // Много операций — сводка + кнопка в приложение
+  let summary = `✅ Распознал <b>${txList.length}</b> операций:\n\n`
+  for (const tx of txList) {
+    const sign = tx.type === 'expense' ? '−' : '+'
+    const emoji = CATEGORY_EMOJI[tx.categoryGuess] || '📌'
+    const cur = CURRENCY_SIGN[tx.currency] || tx.currency
+    summary += `${emoji} ${sign}${tx.amount.toLocaleString('ru-RU')} ${cur}`
+    if (tx.merchant) summary += ` · ${escapeHtml(tx.merchant)}`
+    summary += `\n`
+  }
+  summary += `\nОткрой приложение — подтверди каждую.`
+
+  await sendBotMessage(userId, {
+    text: summary,
+    inlineKeyboard: [
+      [{ text: '📱 Открыть Сохранёнки', url: APP_URL }],
+      [{ text: '❌ Отменить все', callback_data: `cancel_all` }],
     ],
   })
 }
@@ -226,12 +259,30 @@ const handleCallback = async (cb: NonNullable<TgUpdate['callback_query']>) => {
     return json({ ok: true })
   }
 
+  if (action === 'cancel_all' && msg) {
+    // Удаляем ВСЕ pending юзера
+    try {
+      const { getPendingTxList, removePendingTx } = await import('../_kv')
+      const list = await getPendingTxList(userId)
+      for (const t of list) {
+        try { await removePendingTx(userId, t.id) } catch {}
+      }
+    } catch {}
+    await editBotMessage(msg.chat.id, msg.message_id, {
+      text: '❌ Все операции отменены',
+      inlineKeyboard: [[{ text: 'Открыть приложение', url: APP_URL }]],
+    }).catch(() => {})
+    await answerCallback(cb.id, 'Отменено').catch(() => {})
+    return json({ ok: true })
+  }
+
+  // Старый 'add' — поддерживаем для совместимости старых карточек
   if (action === 'add' && txId && msg) {
     await editBotMessage(msg.chat.id, msg.message_id, {
-      text: '✅ Добавлено!\n\nОткрой приложение, чтобы увидеть операцию.',
+      text: '✅ Жди в приложении!\n\nОткрой Сохранёнки — там будет окно подтверждения.',
       inlineKeyboard: [[{ text: '📱 Открыть Сохранёнки', url: APP_URL }]],
     }).catch(() => {})
-    await answerCallback(cb.id, 'Добавлено').catch(() => {})
+    await answerCallback(cb.id, 'Открой приложение').catch(() => {})
     return json({ ok: true })
   }
 
