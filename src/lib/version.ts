@@ -6,7 +6,7 @@
 // ONBOARDING_VERSION: увеличиваем только когда меняется сам онбординг
 // (добавлен или переписан слайд). Юзерам снова покажется весь онбординг.
 
-export const APP_VERSION = 62   // = v0.56 — fix BotPending кнопка disabled, убрал changelog auto-popup
+export const APP_VERSION = 63   // = v0.57 — 5.08 экран Курсы валют ЦБ
 export const ONBOARDING_VERSION = 4
 
 // ============================================================================

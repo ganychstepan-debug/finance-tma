@@ -13,6 +13,7 @@ import { AddTransactionScreen } from '@/screens/AddTransactionScreen'
 import { EditTransactionScreen } from '@/screens/EditTransactionScreen'
 import { AllTransactionsScreen } from '@/screens/AllTransactionsScreen'
 import { CurrencyScreen } from '@/screens/CurrencyScreen'
+import { RatesScreen } from '@/screens/RatesScreen'
 import { WipeScreen } from '@/screens/WipeScreen'
 import { OnboardingScreen } from '@/screens/OnboardingScreen'
 import { TransferScreen } from '@/screens/TransferScreen'
@@ -38,6 +39,7 @@ type Modal =
   | { kind: 'edit-tx'; txId: string }
   | { kind: 'all-tx' }
   | { kind: 'currency' }
+  | { kind: 'rates' }
   | { kind: 'wipe' }
   | { kind: 'goals' }
   | { kind: 'referral' }
@@ -251,6 +253,14 @@ export default function App() {
     )
   }
 
+  if (modal.kind === 'rates') {
+    return (
+      <div className="h-screen flex flex-col">
+        <RatesScreen onClose={close} />
+      </div>
+    )
+  }
+
   if (modal.kind === 'wipe') {
     return (
       <div className="h-screen flex flex-col">
@@ -346,6 +356,7 @@ export default function App() {
           onOpenGoals={() => { setMenuOpen(false); setModal({ kind: 'goals' }) }}
           onOpenReferral={() => { setMenuOpen(false); setModal({ kind: 'referral' }) }}
           onOpenCurrency={() => { setMenuOpen(false); setModal({ kind: 'currency' }) }}
+          onOpenRates={() => { setMenuOpen(false); setModal({ kind: 'rates' }) }}
           onShowChangelog={() => {
             setMenuOpen(false)
             // Сбрасываем метку, чтобы при следующем открытии она снова появилась.

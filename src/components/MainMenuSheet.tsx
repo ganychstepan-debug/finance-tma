@@ -11,6 +11,7 @@ interface Props {
   onOpenGoals: () => void
   onOpenReferral: () => void
   onOpenCurrency: () => void
+  onOpenRates: () => void
   onShowChangelog: () => void
   onShowOnboarding: () => void
 }
@@ -26,7 +27,7 @@ type Row = {
   rightText?: string    // крупный текст справа (например код валюты)
 }
 
-export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onShowChangelog, onShowOnboarding }) => {
+export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoals, onOpenReferral, onOpenCurrency, onOpenRates, onShowChangelog, onShowOnboarding }) => {
   const state = useStore()
   const user = getUser()
   const firstName = user?.first_name ?? 'Гость'
@@ -153,6 +154,13 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       rightText: state.settings.baseCurrency,
     },
     {
+      id: 'rates',
+      icon: '📈',
+      title: 'Курсы валют',
+      subtitle: 'ЦБ РФ · обновляются раз в сутки',
+      onClick: () => { haptic.select(); onOpenRates() },
+    },
+    {
       id: 'goals',
       icon: '🎯',
       title: 'Цели накопления',
@@ -190,7 +198,7 @@ export const MainMenuSheet: React.FC<Props> = ({ onClose, onOpenWipe, onOpenGoal
       id: 'whats-new',
       icon: '✨',
       title: 'Что нового',
-      subtitle: 'Версия v0.56',
+      subtitle: 'Версия v0.57',
       onClick: () => { haptic.select(); onShowChangelog() },
     },
     {
