@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useStore, selectTotalBalance, selectMonthIncome, selectMonthSpend, selectMonthTransactions } from '@/store'
+import { useStore, selectTotalBalance, selectMonthIncome, selectMonthSpend } from '@/store'
 import { HomeHeader } from '@/components/HomeHeader'
 import { AccountCard } from '@/components/AccountCard'
 import { TransactionRow } from '@/components/TransactionRow'
@@ -68,11 +68,12 @@ export const HomeScreen: React.FC<Props> = ({
   const monthDelta = monthIncome - monthSpend
 
   const visibleAccounts = state.accounts.filter((a) => !a.archived && a.type !== 'goal')
-  // Последние 5 операций ЗА ВЫБРАННЫЙ МЕСЯЦ — от новых к старым по дате операции
-  const recentTx = selectMonthTransactions(state, month.getFullYear(), month.getMonth())
+  // v0.68: Операции за последние 7 дней — от новых к старым
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const recentTx = state.transactions
+    .filter((t) => new Date(t.date).getTime() >= weekAgo)
     .slice()
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5)
 
   const totalStr = Math.round(total).toLocaleString('ru-RU')
 
@@ -147,13 +148,13 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </div>
 
-      <div className="px-5 pt-5 mb-2">
+      <div className="px-5 pt-3 mb-1.5">
         <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
           СЧЕТА
         </div>
       </div>
 
-      <div className="px-5 flex gap-2 scroll-x mb-5" style={{ paddingBottom: 4 }}>
+      <div className="px-5 flex gap-2 scroll-x mb-3" style={{ paddingBottom: 4 }}>
         {visibleAccounts.length === 0 ? (
           <button
             onClick={onOpenAccountNew}
@@ -178,7 +179,7 @@ export const HomeScreen: React.FC<Props> = ({
       </div>
 
       {/* Блок целей */}
-      <div className="px-5 mb-2 flex justify-between items-baseline">
+      <div className="px-5 mb-1.5 flex justify-between items-baseline">
         <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
           ЦЕЛИ
         </div>
@@ -193,7 +194,7 @@ export const HomeScreen: React.FC<Props> = ({
         )}
       </div>
 
-      <div className="px-5 mb-5">
+      <div className="px-5 mb-3">
         {activeGoals.length === 0 ? (
           <button
             onClick={onOpenGoals}
@@ -243,7 +244,7 @@ export const HomeScreen: React.FC<Props> = ({
 
       <div className="px-5 mb-2 flex justify-between items-baseline">
         <div className="text-2xs" style={{ color: '#555', letterSpacing: '1px', fontWeight: 500 }}>
-          {recentTx.length > 0 ? 'ПОСЛЕДНИЕ ЗА МЕСЯЦ' : 'В ЭТОМ МЕСЯЦЕ'}
+          {recentTx.length > 0 ? 'ЗА НЕДЕЛЮ' : 'ПОСЛЕДНИЕ ОПЕРАЦИИ'}
         </div>
         {recentTx.length > 0 && (
           <button
@@ -287,6 +288,23 @@ export const HomeScreen: React.FC<Props> = ({
                 <TransactionRow tx={tx} showDivider={i < recentTx.length - 1} onClick={() => onEditTransaction(tx.id)} />
               </SwipeableRow>
             ))}
+            {/* v0.68: плашка в конце списка — переход ко всем операциям */}
+            <button
+              onClick={onOpenTransactions}
+              className="w-full mt-3 py-3 cursor-pointer border-0 flex items-center justify-center"
+              style={{
+                background: 'rgba(255,23,68,0.08)',
+                border: '0.5px solid rgba(255,23,68,0.2)',
+                borderRadius: 12,
+                color: '#ff1744',
+                fontSize: 12,
+                fontWeight: 500,
+                gap: 6,
+              }}
+            >
+              Все операции
+              <span style={{ fontSize: 10 }}>›</span>
+            </button>
           </>
         )}
       </div>
