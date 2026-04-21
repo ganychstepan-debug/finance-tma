@@ -197,6 +197,7 @@ const handlePhrase = async (userId: string, rawText: string, source: 'text' | 'v
     try {
       await addPendingTx(userId, tx)
       txList.push(tx)
+      console.log(`[webhook] saved pending for userId=${userId} id=${tx.id}`)
     } catch (e) {
       console.error('kv error:', (e as Error).message)
     }

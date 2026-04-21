@@ -47,13 +47,18 @@ const kvRequest = async (path: string, method: 'GET' | 'POST' = 'GET', body?: an
   if (!KV_URL || !KV_TOKEN) {
     throw new Error('KV не настроен (KV_REST_API_URL / KV_REST_API_TOKEN)')
   }
+  // body может быть уже строкой (например, JSON.stringify(arr)) — передаём как есть.
+  // Если передан объект — стрингифим один раз.
+  const rawBody = body === undefined ? undefined
+    : typeof body === 'string' ? body
+    : JSON.stringify(body)
   const res = await fetch(`${KV_URL}/${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${KV_TOKEN}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(rawBody ? { 'Content-Type': 'application/json' } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: rawBody,
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')

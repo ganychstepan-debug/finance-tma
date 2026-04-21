@@ -20,6 +20,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'GET') {
     try {
       const items = await getPendingTxList(user.id)
+      console.log(`[pending] GET userId=${user.id} items=${items.length}`)
       return json({ ok: true, items })
     } catch (e) {
       console.error('pending list error:', (e as Error).message)
